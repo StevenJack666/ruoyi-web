@@ -48,8 +48,15 @@ const isWorkflowLoading = ref(false);
 const hasMoreWorkflows = ref(true);
 
 function chooseWorkflowItem(item: any) {
-  isWorkflowVisible.value = true;
-  selectedWorkflowName.value = item.title;
+  if (selectedWorkflowName.value === item.title) {
+    selectedWorkflowName.value = "工作流";
+    isWorkflowVisible.value = false;
+  } else {
+    isWorkflowVisible.value = true;
+    selectedWorkflowName.value = item.title;
+  }
+  // isWorkflowVisible.value = true;
+  // selectedWorkflowName.value = item.title;
   workFlowRunner.value.uuid = item.uuid;
   let nodes = [...item.nodes];
   let user_inputs = nodes[0].inputConfig.user_inputs[0];
