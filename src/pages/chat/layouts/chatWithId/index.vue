@@ -300,6 +300,14 @@ onMounted(async () => {
     localStorage.removeItem("selectedWorkflowName");
   }
 
+  const isUploadFileStr = localStorage.getItem("isUploadFile");
+  if (isUploadFileStr === "true") {
+    isUploadFile.value = true;
+  } else {
+    isUploadFile.value = false;
+  }
+  localStorage.removeItem("isUploadFile");
+
   // 加载知识库列表
   await loadKnowledgeList();
 
