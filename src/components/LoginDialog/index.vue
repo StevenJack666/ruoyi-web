@@ -61,7 +61,7 @@ function onAfterLeave() {
           <div class="left-section">
             <div class="logo-wrap">
               <img :src="logoPng" class="logo-img">
-              <span class="logo-text">RuoYi-AI</span>
+              <span class="logo-text">数字人</span>
             </div>
             <div class="ad-banner">
               <SvgIcon name="p-bangong" class-name="animate-up-down" />
