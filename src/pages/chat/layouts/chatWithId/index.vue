@@ -1,27 +1,27 @@
 <!-- 每个回话对应的聊天内容 -->
 <script setup lang="ts">
-import type { AnyObject } from "typescript-api-pro";
-import type { BubbleProps } from "vue-element-plus-x/types/Bubble";
-import type { BubbleListInstance } from "vue-element-plus-x/types/BubbleList";
-import type { FilesCardProps } from "vue-element-plus-x/types/FilesCard";
-import type { ThinkingStatus } from "vue-element-plus-x/types/Thinking";
-import { useHookFetch } from "hook-fetch/vue";
-import { Sender } from "vue-element-plus-x";
-import { useRoute } from "vue-router";
-import { send } from "@/api";
-import { getKnowledgeList } from "@/api/chat";
-import FilesSelect from "@/components/FilesSelect/index.vue";
-import ModelSelect from "@/components/ModelSelect/index.vue";
-import { useChatStore } from "@/stores/modules/chat";
-import { useFilesStore } from "@/stores/modules/files";
-import { useModelStore } from "@/stores/modules/model";
-import { useSessionStore } from "@/stores/modules/session";
-import { useUserStore } from "@/stores/modules/user";
-import { codeXRender } from "@/utils/markdownRenderers";
+import type { AnyObject } from 'typescript-api-pro';
+import type { BubbleProps } from 'vue-element-plus-x/types/Bubble';
+import type { BubbleListInstance } from 'vue-element-plus-x/types/BubbleList';
+import type { FilesCardProps } from 'vue-element-plus-x/types/FilesCard';
+import type { ThinkingStatus } from 'vue-element-plus-x/types/Thinking';
+import { useHookFetch } from 'hook-fetch/vue';
+import { Sender } from 'vue-element-plus-x';
+import { useRoute } from 'vue-router';
+import { send } from '@/api';
+import { getKnowledgeList } from '@/api/chat';
+import FilesSelect from '@/components/FilesSelect/index.vue';
+import ModelSelect from '@/components/ModelSelect/index.vue';
+import { useChatStore } from '@/stores/modules/chat';
+import { useFilesStore } from '@/stores/modules/files';
+import { useModelStore } from '@/stores/modules/model';
+import { useSessionStore } from '@/stores/modules/session';
+import { useUserStore } from '@/stores/modules/user';
+import { codeXRender } from '@/utils/markdownRenderers';
 
 type MessageItem = BubbleProps & {
   key: number;
-  role: "ai" | "user" | "system";
+  role: 'ai' | 'user' | 'system';
   avatar: string;
   thinkingStatus?: ThinkingStatus;
   thinlCollapse?: boolean;
@@ -31,7 +31,6 @@ const copyIconMap = ref<Record<number, string>>({}); // 记录每条消息的复
 const editingMessageKeys = ref<number[]>([]); // 跟踪多个编辑中的消息
 const editedContents = ref<Record<number, string>>({}); // 存储每条消息的临时编辑内容
 
-const copyIcon = ref("CopyDocument");
 const route = useRoute();
 const chatStore = useChatStore();
 const modelStore = useModelStore();
@@ -42,10 +41,10 @@ const userStore = useUserStore();
 // 用户头像
 const avatar = computed(() => {
   const userInfo = userStore.userInfo;
-  return userInfo?.avatar || "https://avatars.githubusercontent.com/u/32251822?s=96&v=4";
+  return userInfo?.avatar || 'https://avatars.githubusercontent.com/u/32251822?s=96&v=4';
 });
 
-const inputValue = ref("");
+const inputValue = ref('');
 const senderRef = ref<InstanceType<typeof Sender> | null>(null);
 const bubbleItems = ref<MessageItem[]>([]);
 const bubbleListRef = ref<BubbleListInstance | null>(null);
@@ -60,15 +59,15 @@ const knowledgeList = ref<any[]>([]);
 const workflowList = ref<any[]>([
   {
     id: 1,
-    name: "工作流1",
+    name: '工作流1',
   },
 ]);
 
 // 知识库弹窗状态
 const knowledgePopoverRef = ref();
 const isKnowledgePopoverVisible = ref(false);
-const selectedKnowledgeId = ref<string>("");
-const selectedKnowledgeName = ref<string>("知识库");
+const selectedKnowledgeId = ref<string>('');
+const selectedKnowledgeName = ref<string>('知识库');
 const isWorkflowVisible = ref(false);
 // 加载知识库列表
 async function loadKnowledgeList() {
@@ -78,17 +77,18 @@ async function loadKnowledgeList() {
       knowledgeList.value = response.rows.map((item: any) => ({
         id: item.id,
         name: item.name,
-        icon: "Document",
+        icon: 'Document',
       }));
     }
-  } catch (error) {
-    console.error("Failed to load knowledge list:", error);
+  }
+  catch (error) {
+    console.error('Failed to load knowledge list:', error);
   }
 }
 
 // 插入知识库标签
 function insertKnowledgeTag(knowledgeId: string) {
-  const knowledge = knowledgeList.value.find((k) => k.id === knowledgeId);
+  const knowledge = knowledgeList.value.find(k => k.id === knowledgeId);
   if (knowledge) {
     selectedKnowledgeId.value = knowledgeId;
     selectedKnowledgeName.value = knowledge.name;
@@ -100,32 +100,32 @@ function insertKnowledgeTag(knowledgeId: string) {
 
 // 清除知识库选择
 function clearKnowledgeSelection() {
-  selectedKnowledgeId.value = "";
-  selectedKnowledgeName.value = "知识库";
-  chatStore.setKnowledgeId("");
+  selectedKnowledgeId.value = '';
+  selectedKnowledgeName.value = '知识库';
+  chatStore.setKnowledgeId('');
 }
 
 // 从 localStorage 恢复推理状态
 onMounted(async () => {
   bubbleItems.value.forEach((item) => {
-    copyIconMap.value[item.key] = "CopyDocument";
+    copyIconMap.value[item.key] = 'CopyDocument';
   });
-  const enableThinking = localStorage.getItem("enableThinking");
-  if (enableThinking === "true") {
+  const enableThinking = localStorage.getItem('enableThinking');
+  if (enableThinking === 'true') {
     isReasoningEnabled.value = true;
-    localStorage.removeItem("enableThinking");
+    localStorage.removeItem('enableThinking');
   }
-  const enableInternet = localStorage.getItem("enableInternet");
-  if (enableInternet === "true") {
+  const enableInternet = localStorage.getItem('enableInternet');
+  if (enableInternet === 'true') {
     isWebSearchEnabled.value = true;
-    localStorage.removeItem("enableInternet");
+    localStorage.removeItem('enableInternet');
   }
   // 加载知识库列表
   await loadKnowledgeList();
 
   // 从 store 中同步知识库选择状态
   if (chatStore.knowledgeId) {
-    const knowledge = knowledgeList.value.find((k) => k.id === chatStore.knowledgeId);
+    const knowledge = knowledgeList.value.find(k => k.id === chatStore.knowledgeId);
     if (knowledge) {
       selectedKnowledgeId.value = chatStore.knowledgeId;
       selectedKnowledgeName.value = knowledge.name;
@@ -140,7 +140,7 @@ const {
 } = useHookFetch({
   request: send,
   onError: (err) => {
-    console.warn("测试错误拦截", err);
+    console.warn('测试错误拦截', err);
   },
 });
 // 记录进入思考中
@@ -150,7 +150,7 @@ watch(
   () => route.params?.id,
   async (_id_) => {
     if (_id_) {
-      if (_id_ !== "not_login") {
+      if (_id_ !== 'not_login') {
         // 判断的当前会话id是否有聊天记录，有缓存则直接赋值展示
         if (chatStore.chatMap[`${_id_}`] && chatStore.chatMap[`${_id_}`].length) {
           bubbleItems.value = chatStore.chatMap[`${_id_}`] as MessageItem[];
@@ -173,14 +173,14 @@ watch(
       }
 
       // 如果本地有发送内容 ，则直接发送
-      const v = localStorage.getItem("chatContent");
+      const v = localStorage.getItem('chatContent');
       if (v) {
         // 发送消息
         setTimeout(() => {
           startSSE(v);
         }, 350);
 
-        localStorage.removeItem("chatContent");
+        localStorage.removeItem('chatContent');
       }
     }
   },
@@ -203,23 +203,23 @@ function handleDataChunk(chunk: AnyObject) {
     }
 
     // 处理不同的内容格式
-    let contentToAdd = "";
-    let reasoningToAdd = "";
+    let contentToAdd = '';
+    let reasoningToAdd = '';
 
     // 如果是字符串，直接处理
-    if (typeof messageData === "string") {
+    if (typeof messageData === 'string') {
       contentToAdd = messageData;
     }
     // 如果是对象，提取 content 和 reasoning_content
-    else if (typeof messageData === "object") {
-      reasoningToAdd = messageData.reasoning_content || "";
-      contentToAdd = messageData.content || "";
+    else if (typeof messageData === 'object') {
+      reasoningToAdd = messageData.reasoning_content || '';
+      contentToAdd = messageData.content || '';
     }
 
     // 处理推理内容
     if (reasoningToAdd) {
       const lastMsg = bubbleItems.value[bubbleItems.value.length - 1];
-      lastMsg.thinkingStatus = "thinking";
+      lastMsg.thinkingStatus = 'thinking';
       lastMsg.loading = true;
       lastMsg.thinlCollapse = true;
       if (bubbleItems.value.length) {
@@ -233,29 +233,29 @@ function handleDataChunk(chunk: AnyObject) {
       const lastMessage = bubbleItems.value[bubbleItems.value.length - 1];
 
       // 1. 处理 <think> 标签之前的内容
-      if (!isThinking && currentText.includes("<think>")) {
-        const thinkIdx = currentText.indexOf("<think>");
+      if (!isThinking && currentText.includes('<think>')) {
+        const thinkIdx = currentText.indexOf('<think>');
         if (thinkIdx > 0) {
           const beforeThink = currentText.substring(0, thinkIdx);
           lastMessage.content += beforeThink;
         }
         currentText = currentText.substring(thinkIdx + 7); // 移除 <think>
         isThinking = true;
-        lastMessage.thinkingStatus = "thinking";
+        lastMessage.thinkingStatus = 'thinking';
         lastMessage.loading = true;
         lastMessage.thinlCollapse = true;
       }
 
       // 2. 处理 </think> 标签及之前的内容
-      if (isThinking && currentText.includes("</think>")) {
-        const thinkEndIdx = currentText.indexOf("</think>");
+      if (isThinking && currentText.includes('</think>')) {
+        const thinkEndIdx = currentText.indexOf('</think>');
         if (thinkEndIdx > 0) {
           const thinkContent = currentText.substring(0, thinkEndIdx);
           lastMessage.reasoning_content += thinkContent;
         }
         currentText = currentText.substring(thinkEndIdx + 8); // 移除 </think>
         isThinking = false;
-        lastMessage.thinkingStatus = "end";
+        lastMessage.thinkingStatus = 'end';
         lastMessage.loading = false;
       }
 
@@ -264,47 +264,49 @@ function handleDataChunk(chunk: AnyObject) {
         if (isThinking) {
           // 还在思考模式中，内容属于推理
           lastMessage.reasoning_content += currentText;
-        } else {
+        }
+        else {
           // 已结束思考模式，内容属于最终回复
           lastMessage.content += currentText;
         }
       }
     }
-  } catch (err) {
-    console.error("解析数据时出错:", err);
+  }
+  catch (err) {
+    console.error('解析数据时出错:', err);
   }
 }
 
 // 封装错误处理逻辑
 function handleError(err: any) {
-  console.error("Fetch error:", err);
+  console.error('Fetch error:', err);
 }
 
 async function startSSE(chatContent: string) {
   try {
     // 添加用户输入的消息
-    inputValue.value = "";
+    inputValue.value = '';
     addMessage(chatContent, true);
-    addMessage("", false);
+    addMessage('', false);
 
     // 这里有必要调用一下 BubbleList 组件的滚动到底部 手动触发 自动滚动
     bubbleListRef.value?.scrollToBottom();
 
     // 获取最后一条用户消息（后端做了长期记忆缓存，只需发送最新的用户消息）
-    const lastUserMessage = bubbleItems.value.filter((item: any) => item.role === "user").pop();
+    const lastUserMessage = bubbleItems.value.filter((item: any) => item.role === 'user').pop();
 
     for await (const chunk of stream({
       messages: lastUserMessage
         ? [
             {
-              role: lastUserMessage.role,
+              role: lastUserMessage.role === 'ai' ? 'assistant' : lastUserMessage.role,
               content: lastUserMessage.content,
             },
           ]
         : [],
-      sessionId: route.params?.id !== "not_login" ? String(route.params?.id) : undefined,
+      sessionId: route.params?.id !== 'not_login' ? String(route.params?.id) : undefined,
       userId: userStore.userInfo?.userId,
-      model: modelStore.currentModelInfo.modelName ?? "",
+      model: modelStore.currentModelInfo.modelName ?? '',
       enableThinking: isReasoningEnabled.value,
       enableInternet: isWebSearchEnabled.value,
       knowledgeId: chatStore.knowledgeId || undefined,
@@ -312,15 +314,15 @@ async function startSSE(chatContent: string) {
       // 提取原始数据
       const rawData = chunk.result || chunk.source;
       // 处理连接开始事件
-      if (rawData === ":connected") {
+      if (rawData === ':connected') {
         continue;
       }
 
       // 处理连接结束事件
-      if (rawData === ":disconnected") {
+      if (rawData === ':disconnected') {
         break;
       }
-      if (typeof rawData === "string" && rawData.includes("event:") && rawData.includes("data:")) {
+      if (typeof rawData === 'string' && rawData.includes('event:') && rawData.includes('data:')) {
         // 提取 event 类型
         const eventMatch = rawData.match(/event:(\w+)/);
         const event = eventMatch?.[1];
@@ -330,21 +332,23 @@ async function startSSE(chatContent: string) {
         // 清理 data 中可能包含的多余 data: 前缀（当有多行 data: 时）
         if (data) {
           data = data
-            .split("\ndata:")
-            .map((line) => line.trim())
-            .filter((line) => line !== "")
-            .join("\n");
+            .split('\ndata:')
+            .map(line => line.trim())
+            .filter(line => line !== '')
+            .join('\n');
         }
 
         // 只有当 data 不为空且不是格式错误的 'data:' 字符串时才处理
-        if (event === "message" && data && data.length > 0 && data !== "data:") {
+        if (event === 'message' && data && data.length > 0 && data !== 'data:') {
           handleDataChunk({ data });
         }
       }
     }
-  } catch (err) {
+  }
+  catch (err) {
     handleError(err);
-  } finally {
+  }
+  finally {
     // 停止打字器状态
     if (bubbleItems.value.length) {
       const lastMessage = bubbleItems.value[bubbleItems.value.length - 1];
@@ -352,8 +356,8 @@ async function startSSE(chatContent: string) {
       // 无条件重置 loading（停止打字动画）
       lastMessage.loading = false;
       // 重置思考状态：如果还在思考中，标记为已完成
-      if (lastMessage.thinkingStatus === "thinking") {
-        lastMessage.thinkingStatus = "end";
+      if (lastMessage.thinkingStatus === 'thinking') {
+        lastMessage.thinkingStatus = 'end';
       }
       // 重置isThinking标志
       isThinking = false;
@@ -374,16 +378,16 @@ function copyToClipboard(text: string, key: number) {
     .writeText(text)
     .then(() => {
       // 更新当前消息的图标为打钩
-      copyIconMap.value[key] = "Check";
+      copyIconMap.value[key] = 'Check';
 
       // 延迟恢复原始图标
       setTimeout(() => {
-        copyIconMap.value[key] = "CopyDocument";
+        copyIconMap.value[key] = 'CopyDocument';
       }, 2000);
     })
     .catch((err) => {
-      console.error("复制失败:", err);
-      ElMessage.error("复制失败，请手动复制");
+      console.error('复制失败:', err);
+      ElMessage.error('复制失败，请手动复制');
     });
 }
 
@@ -394,15 +398,15 @@ function addMessage(message: string, isUser: boolean) {
     key: i,
     avatar: isUser
       ? avatar.value
-      : "https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png",
-    avatarSize: "32px",
-    role: isUser ? "user" : "system",
-    placement: isUser ? "end" : "start",
+      : 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png',
+    avatarSize: '32px',
+    role: isUser ? 'user' : 'system',
+    placement: isUser ? 'end' : 'start',
     isMarkdown: !isUser,
     loading: !isUser,
-    content: message || "",
-    reasoning_content: "",
-    thinkingStatus: "start",
+    content: message || '',
+    reasoning_content: '',
+    thinkingStatus: 'start',
     thinlCollapse: false,
     noStyle: !isUser,
   };
@@ -420,21 +424,21 @@ function handleDeleteCard(_item: FilesCardProps, index: number) {
 function startEditing(item: MessageItem) {
   if (!editingMessageKeys.value.includes(item.key)) {
     editingMessageKeys.value.push(item.key); // 将消息 key 加入编辑列表
-    editedContents.value[item.key] = item.content; // 初始化编辑内容
+    editedContents.value[item.key] = item.content || ''; // 初始化编辑内容
   }
   // ⭐ 关键：关闭 Bubble 样式
   item.noStyle = true;
-  item.class = "editing-bubble"; // ⭐ 新增
+  (item as any).class = 'editing-bubble'; // ⭐ 新增
 }
 
 // Cancel editing and revert to original content
 function cancelEditingByKey(key: number) {
-  const item = bubbleItems.value.find((i) => i.key === key);
+  const item = bubbleItems.value.find(i => i.key === key);
   if (item) {
     item.noStyle = false; // 恢复气泡
-    item.class = "";
+    (item as any).class = '';
   }
-  editingMessageKeys.value = editingMessageKeys.value.filter((k) => k !== key);
+  editingMessageKeys.value = editingMessageKeys.value.filter(k => k !== key);
   delete editedContents.value[key];
 }
 
@@ -458,7 +462,8 @@ watch(
       nextTick(() => {
         senderRef.value?.openHeader();
       });
-    } else {
+    }
+    else {
       nextTick(() => {
         senderRef.value?.closeHeader();
       });
@@ -523,7 +528,9 @@ watch(
                     class="edit-input"
                   />
                   <div class="edit-actions">
-                    <el-button size="small" @click="cancelEditingByKey(item.key)"> 取消 </el-button>
+                    <el-button size="small" @click="cancelEditingByKey(item.key)">
+                      取消
+                    </el-button>
                     <el-button type="primary" size="small" @click="sendMessageByKey(item.key)">
                       发送
                     </el-button>
@@ -625,7 +632,9 @@ watch(
                   <div class="knowledge-list-container">
                     <div class="knowledge-list-header">
                       <span>选择知识库</span>
-                      <button class="clear-btn" @click="clearKnowledgeSelection">取消选择</button>
+                      <button class="clear-btn" @click="clearKnowledgeSelection">
+                        取消选择
+                      </button>
                     </div>
                     <div class="knowledge-list">
                       <div
