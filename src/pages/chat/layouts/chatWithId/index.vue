@@ -26,6 +26,7 @@ type MessageItem = BubbleProps & {
   thinkingStatus?: ThinkingStatus;
   thinlCollapse?: boolean;
   reasoning_content?: string;
+  fileList?: FilesCardProps[]; // 新增字段
 };
 const copyIconMap = ref<Record<number, string>>({}); // 记录每条消息的复制按钮图标
 const editingMessageKeys = ref<number[]>([]); // 跟踪多个编辑中的消息
@@ -38,6 +39,10 @@ const modelStore = useModelStore();
 const filesStore = useFilesStore();
 const sessionStore = useSessionStore();
 const userStore = useUserStore();
+
+console.log("filesStore", filesStore);
+
+const userFileList = ref([]);
 
 // 用户头像
 const avatar = computed(() => {
@@ -75,6 +80,9 @@ const workflowParams = ref<AnyObject>({
 const workFlowRunner = ref<AnyObject>({});
 const reSumeRunner = ref<AnyObject>({});
 
+const fileRunner = ref<AnyObject>({});
+
+const isUploadFile = ref(false);
 // 是否正在加载
 const isWorkflowLoading = ref(false);
 // 是否还有更多数据
@@ -144,8 +152,15 @@ function handleNodeChunk(data: any, isLastChunk = false) {
 }
 
 function chooseWorkflowItem(item: any) {
-  isWorkflowVisible.value = true;
-  selectedWorkflowName.value = item.title;
+  // isWorkflowVisible.value = true;
+  if (selectedWorkflowName.value === item.title) {
+    selectedWorkflowName.value = "工作流";
+    isWorkflowVisible.value = false;
+  } else {
+    isWorkflowVisible.value = true;
+    selectedWorkflowName.value = item.title;
+  }
+
   workFlowRunner.value.uuid = item.uuid;
   let nodes = [...item.nodes];
   let user_inputs = nodes[0].inputConfig.user_inputs[0];
@@ -161,8 +176,8 @@ function chooseWorkflowItem(item: any) {
   };
 
   workFlowRunner.value.inputs = [inputsObj];
-  isResume.value = false
-  reSumeRunner.value = {}
+  isResume.value = false;
+  reSumeRunner.value = {};
 
   console.log("workFlowRunner", workFlowRunner.value);
 }
@@ -455,6 +470,15 @@ function handleError(err: any) {
 
 async function startSSE(chatContent: string) {
   currentNodeId = null; // 每次发送消息前先置空存储的nodeId 防止多余系统气泡生成
+
+  let filesList = [...filesStore.filesList];
+  if (filesList && filesList.length) {
+    filesList.map((item) => {
+      item.showDelIcon = false;
+      return item;
+    });
+  }
+  userFileList.value = filesList;
   if (isWorkflowVisible.value && !workFlowRunner.value.hasOwnProperty("inputs")) {
     ElMessage.error("请选择工作流！");
     return;
@@ -463,6 +487,25 @@ async function startSSE(chatContent: string) {
     // 添加用户输入的消息
     inputValue.value = "";
     addMessage(chatContent, true);
+
+    // 2. 获取刚添加的消息对象
+    const newUserMessage = bubbleItems.value[bubbleItems.value.length - 1];
+
+    // 3. 处理文件列表
+    let filesList = [...filesStore.filesList];
+    if (filesList && filesList.length) {
+      filesList.map((item) => {
+        item.showDelIcon = false;
+        return item;
+      });
+    }
+
+    // 4. 将文件列表绑定到消息对象上
+    newUserMessage.fileList = filesList;
+
+    // 5. 清空 store 中的文件列表
+    filesStore.setFilesList([]);
+
     addMessage("", false);
 
     // 这里有必要调用一下 BubbleList 组件的滚动到底部 手动触发 自动滚动
@@ -499,6 +542,9 @@ async function startSSE(chatContent: string) {
       workFlowRunner: workFlowRunner.value,
       isResume: isResume.value,
       reSumeRunner: reSumeRunner.value,
+      isUploadFile: isUploadFile.value,
+      fileRunner: fileRunner.value,
+      fileMetaData: JSON.stringify(userFileList.value),
     })) {
       // 提取原始数据
       const rawData = chunk.result || chunk.source;
@@ -629,6 +675,7 @@ async function startSSE(chatContent: string) {
       // 重置isThinking标志
       isThinking = false;
     }
+    userFileList.value = [];
   }
 }
 
@@ -726,10 +773,26 @@ watch(
   () => filesStore.filesList.length,
   (val) => {
     if (val > 0) {
+      console.log("filesList.length", filesStore.filesList);
+      let ossIds = [];
+      let filesList = filesStore.filesList;
+      filesList.forEach((val) => {
+        if (val.fileInfo && val.fileInfo.length) {
+          ossIds.push(val.fileInfo[0].ossId);
+        }
+      });
+      console.log("filesList.length-ossIds", ossIds);
+      fileRunner.value = {
+        ossIds,
+      };
       nextTick(() => {
         senderRef.value?.openHeader();
       });
+      isUploadFile.value = true;
     } else {
+      console.log("filesList.length", val);
+      isUploadFile.value = false;
+      fileRunner.value = {};
       nextTick(() => {
         senderRef.value?.closeHeader();
       });
@@ -776,8 +839,40 @@ watch(
             :themes="{ light: 'github-light', dark: 'github-dark' }"
             default-theme-mode="dark"
           />
+
           <!-- user 内容 纯文本 -->
           <div v-if="item.content && item.role === 'user'" class="userContent">
+            <div class="sender-header p-12px pt-6px pb-0px">
+              <Attachments
+                :items="item.fileList"
+                :hide-upload="true"
+                @delete-card="handleDeleteCard"
+              >
+                <template #prev-button="{ show, onScrollLeft }">
+                  <div
+                    v-if="show"
+                    class="prev-next-btn left-8px flex-center w-22px h-22px rounded-8px border-1px border-solid border-[rgba(0,0,0,0.08)] c-[rgba(0,0,0,.4)] hover:bg-#f3f4f6 bg-#fff font-size-10px"
+                    @click="onScrollLeft"
+                  >
+                    <el-icon>
+                      <ArrowLeftBold />
+                    </el-icon>
+                  </div>
+                </template>
+
+                <template #next-button="{ show, onScrollRight }">
+                  <div
+                    v-if="show"
+                    class="prev-next-btn right-8px flex-center w-22px h-22px rounded-8px border-1px border-solid border-[rgba(0,0,0,0.08)] c-[rgba(0,0,0,.4)] hover:bg-#f3f4f6 bg-#fff font-size-10px"
+                    @click="onScrollRight"
+                  >
+                    <el-icon>
+                      <ArrowRightBold />
+                    </el-icon>
+                  </div>
+                </template>
+              </Attachments>
+            </div>
             <div class="user-bubble" :class="{ editing: editingMessageKeys.includes(item.key) }">
               <template v-if="!editingMessageKeys.includes(item.key)">
                 <div class="user-content">

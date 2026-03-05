@@ -53,6 +53,7 @@ export const useChatStore = defineStore('chat', () => {
         content: afterThinkContent,
         thinlCollapse: false,
         noStyle: !isUser,
+        fileList:item.remark?JSON.parse(item.remark):[]
       };
 
       return result;

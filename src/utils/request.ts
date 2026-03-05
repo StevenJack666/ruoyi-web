@@ -26,6 +26,13 @@ function jwtPlugin(): HookFetchPlugin<BaseResponse> {
     name: 'jwt',
     beforeRequest: async (config) => {
       config.headers = new Headers(config.headers);
+      // 判断如果是 FormData，删除 Content-Type 让浏览器自动设置
+
+      console.log('config',config)
+      if (config.data instanceof FormData) {
+        config.headers.delete('Content-Type');
+      }
+
       config.headers.set('authorization', `Bearer ${userStore.token}`);
       config.headers.set('ClientID', import.meta.env.VITE_CLIENT_ID);
       return config;

@@ -28,3 +28,12 @@ export function getWorkflowList(params: workflowVo) {
   // 发送 POST 请求
   return post<workflowVo[]>(url, {}).json();
 }
+
+// 上传文件
+export function uploadFile(file: File) {
+  const formData = new FormData();
+  formData.append('files', file);
+
+  console.log('formData-formData', formData)
+  return post('/resource/oss/fileUpload', formData).json();
+}
