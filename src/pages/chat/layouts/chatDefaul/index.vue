@@ -153,6 +153,7 @@ const selectedWorkflowName = ref<string>("工作流");
 
 const workFlowRunner = ref<AnyObject>({});
 const reSumeRunner = ref<AnyObject>({});
+const fileRunner = ref<AnyObject>({});
 
 // 插入知识库标签
 function insertKnowledgeTag(knowledgeId: string) {
@@ -205,16 +206,30 @@ watch(
   () => filesStore.filesList.length,
   (val) => {
     if (val > 0) {
+      let ossIds = [];
+      let filesList = filesStore.filesList;
+      filesList.forEach((val) => {
+        if (val.fileInfo && val.fileInfo.length) {
+          ossIds.push(val.fileInfo[0].ossId);
+        }
+      });
+      console.log("filesList.length-ossIds", ossIds);
+      fileRunner.value = {
+        ossIds,
+      };
       nextTick(() => {
         senderRef.value?.openHeader();
       });
+
       localStorage.setItem("isUploadFile", "true");
     } else {
       nextTick(() => {
         senderRef.value?.closeHeader();
       });
       localStorage.setItem("isUploadFile", "false");
+      fileRunner.value = {};
     }
+    localStorage.setItem("fileRunner", JSON.stringify(fileRunner.value));
   },
 );
 
