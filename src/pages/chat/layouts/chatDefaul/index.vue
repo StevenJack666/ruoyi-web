@@ -208,10 +208,12 @@ watch(
       nextTick(() => {
         senderRef.value?.openHeader();
       });
+      localStorage.setItem("isUploadFile", "true");
     } else {
       nextTick(() => {
         senderRef.value?.closeHeader();
       });
+      localStorage.setItem("isUploadFile", "false");
     }
   },
 );
