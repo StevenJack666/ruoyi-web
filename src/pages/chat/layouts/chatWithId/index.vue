@@ -306,6 +306,13 @@ onMounted(async () => {
   } else {
     isUploadFile.value = false;
   }
+
+  const fileRunnerStr = localStorage.getItem("fileRunner");
+  if (fileRunnerStr) {
+    const fileRunnerObj = JSON.parse(fileRunnerStr);
+    fileRunner.value = { ...fileRunnerObj };
+    localStorage.removeItem("fileRunner");
+  }
   localStorage.removeItem("isUploadFile");
   // 加载知识库列表
   await loadKnowledgeList();
