@@ -12,7 +12,6 @@ const props = defineProps({
 
 const refEle = ref<HTMLElement>();
 let myChart: echarts.ECharts | null = null;
-let resizeListener: (() => void) | null = null;
 let retryCount = 0;
 const maxRetries = 3;
 

@@ -1,6 +1,7 @@
 import type { GetSessionListVO } from '@/api/model/types';
 import { defineStore } from 'pinia';
 import { getModelList } from '@/api';
+import { useUserStore } from './user';
 
 // 模型管理
 export const useModelStore = defineStore('model', () => {
@@ -16,6 +17,12 @@ export const useModelStore = defineStore('model', () => {
   const modelList = ref<GetSessionListVO[]>([]);
   // 请求模型菜单列表
   const requestModelList = async () => {
+    // 没有 token 时不请求
+    const userStore = useUserStore();
+    if (!userStore.token) {
+      return;
+    }
+
     try {
       const res = await getModelList();
       modelList.value = res.data;

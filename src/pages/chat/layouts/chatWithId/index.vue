@@ -26,12 +26,12 @@ type MessageItem = BubbleProps & {
   thinkingStatus?: ThinkingStatus;
   thinlCollapse?: boolean;
   reasoning_content?: string;
+  class?: string;
 };
 const copyIconMap = ref<Record<number, string>>({}); // 记录每条消息的复制按钮图标
 const editingMessageKeys = ref<number[]>([]); // 跟踪多个编辑中的消息
 const editedContents = ref<Record<number, string>>({}); // 存储每条消息的临时编辑内容
 
-const copyIcon = ref("CopyDocument");
 const route = useRoute();
 const chatStore = useChatStore();
 const modelStore = useModelStore();
@@ -293,11 +293,17 @@ async function startSSE(chatContent: string) {
     // 获取最后一条用户消息（后端做了长期记忆缓存，只需发送最新的用户消息）
     const lastUserMessage = bubbleItems.value.filter((item: any) => item.role === "user").pop();
 
+    // 转换 role 类型：本地 "ai" -> 后端 "assistant"
+    const convertRole = (role: string): "user" | "assistant" | "system" => {
+      if (role === "ai") return "assistant";
+      return role as "user" | "assistant" | "system";
+    };
+
     for await (const chunk of stream({
       messages: lastUserMessage
         ? [
             {
-              role: lastUserMessage.role,
+              role: convertRole(lastUserMessage.role),
               content: lastUserMessage.content,
             },
           ]
@@ -420,7 +426,7 @@ function handleDeleteCard(_item: FilesCardProps, index: number) {
 function startEditing(item: MessageItem) {
   if (!editingMessageKeys.value.includes(item.key)) {
     editingMessageKeys.value.push(item.key); // 将消息 key 加入编辑列表
-    editedContents.value[item.key] = item.content; // 初始化编辑内容
+    editedContents.value[item.key] = item.content || ""; // 初始化编辑内容
   }
   // ⭐ 关键：关闭 Bubble 样式
   item.noStyle = true;
