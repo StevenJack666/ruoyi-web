@@ -9,7 +9,7 @@ import { useHookFetch } from 'hook-fetch/vue';
 import { Sender } from 'vue-element-plus-x';
 import { useRoute } from 'vue-router';
 import { send } from '@/api';
-import { getKnowledgeList, getWorkflowList } from '@/api/chat';
+import { getKnowledgeList } from '@/api/chat';
 import FilesSelect from '@/components/FilesSelect/index.vue';
 import ModelSelect from '@/components/ModelSelect/index.vue';
 import { useChatStore } from '@/stores/modules/chat';
@@ -57,7 +57,12 @@ const isWebSearchEnabled = ref(false);
 // 知识库列表配置
 const knowledgeList = ref<any[]>([]);
 
-const workflowList = ref<any[]>([]);
+const workflowList = ref<any[]>([
+  {
+    id: 1,
+    name: '工作流1',
+  },
+]);
 
 // 知识库弹窗状态
 const knowledgePopoverRef = ref();
@@ -316,6 +321,7 @@ onMounted(async () => {
     }
   }
 });
+
 // 记录进入思考中
 let isThinking = false;
 

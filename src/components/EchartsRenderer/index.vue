@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, watch, onUnmounted, nextTick } from 'vue';
 import * as echarts from 'echarts';
+import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 
 // 通过 selfProps 获取所有自定义属性
 const props = defineProps({
@@ -28,13 +28,12 @@ function extractFunctions(jsCode: string): { code: string; functions: Map<string
   let counter = 0;
 
   // 匹配 function(...)  {...} 或 (params) => {...} 的模式
-  const functionPattern = /:\s*(function\s*\([^)]*\)\s*\{[\s\S]*?\}|[\s\S]*?=>\s*\{[\s\S]*?\}|[\s\S]*?=>\s*[\s\S]*?(?=[,}\]]|$))/g;
+  // eslint-disable-next-line regexp/no-super-linear-backtracking
+  const functionPattern = /:\s*(function\s*\([^)]*\)\s*\{(?:[^{}]|\{[^{}]*\})*\}|(?:[^=,{}\n]|\{[^{}]*\})*=>\s*\{(?:[^{}]|\{[^{}]*\})*\}|(?:[^=,{}\n]|\{[^{}]*\})*=>\s*[^,}\n]*(?=[,}\]]|$))/g;
 
   let code = jsCode;
-  let match;
-
   // 先处理标准的 function(params) { ... } 格式
-  while ((match = functionPattern.exec(jsCode)) !== null) {
+  for (const match of jsCode.matchAll(functionPattern)) {
     const placeholder = `__FUNCTION_${counter}__`;
     const functionStr = match[1];
     functions.set(placeholder, functionStr);
@@ -56,10 +55,11 @@ function reconstructFunctions(obj: any, functions: Map<string, string>): any {
     if (functionStr) {
       try {
         // 提取函数体和参数
-        const match = functionStr.match(/function\s*\(([^)]*)\)\s*\{([\s\S]*)\}/) ||
-                      functionStr.match(/\(([^)]*)\)\s*=>\s*\{([\s\S]*)\}/);
+        const match = functionStr.match(/function\s*\(([^)]*)\)\s*\{([\s\S]*)\}/)
+          || functionStr.match(/\(([^)]*)\)\s*=>\s*\{([\s\S]*)\}/);
         if (match) {
           const [, params, body] = match;
+          // eslint-disable-next-line no-new-func
           return new Function(params, body);
         }
       }
@@ -99,7 +99,7 @@ function convertJsObjectToJson(jsCode: string): string {
   }
 
   // 为无引号的键添加引号：key: value -> "key": value
-  cleaned = cleaned.replace(/([{,]\s*)([a-zA-Z_$][a-zA-Z0-9_$]*)\s*:/g, '$1"$2":');
+  cleaned = cleaned.replace(/([{,]\s*)([a-z_$][\w$]*)\s*:/gi, '$1"$2":');
 
   // 处理单引号字符串，转换为双引号
   cleaned = cleaned.replace(/'([^']*)'/g, '"$1"');
@@ -123,7 +123,8 @@ function parseEChartsOption(data: string | object) {
       let cleanedStr = data.trim();
 
       // 处理 markdown 代码块格式：```echarts ... ``` 或 ```json ... ```
-      const codeBlockMatch = cleanedStr.match(/^```(?:echarts|json)?\s*\n?([\s\S]*?)\n?```\s*$/);
+
+      const codeBlockMatch = cleanedStr.match(/^```(?:[^`]|`(?!``))*```\s*$/);
       if (codeBlockMatch) {
         cleanedStr = codeBlockMatch[1].trim();
       }
@@ -145,11 +146,11 @@ function parseEChartsOption(data: string | object) {
         }
         catch {
           // 最后再尝试其他修复方式
-          let fixedStr = codeWithoutFunctions
-            .replace(/'/g, '"')           // 单引号转双引号
+          const fixedStr = codeWithoutFunctions
+            .replace(/'/g, '"') // 单引号转双引号
             .replace(/(\w+)\s*:/g, '"$1":') // 无引号的键添加引号
-            .replace(/,\s*}/g, '}')       // 移除末尾逗号
-            .replace(/,\s*]/g, ']');      // 移除数组末尾逗号
+            .replace(/,\s*\}/g, '}') // 移除末尾逗号
+            .replace(/,\s*\]/g, ']'); // 移除数组末尾逗号
 
           const parsed = JSON.parse(fixedStr);
           return reconstructFunctions(parsed, functions);
@@ -180,7 +181,8 @@ function renderChart() {
       setTimeout(() => {
         renderChart();
       }, 100);
-    } else {
+    }
+    else {
       console.error('[EchartsRenderer] 容器无法获取有效尺寸，放弃');
       if (refEle.value) {
         refEle.value.innerHTML = '<div style="color: #999; padding: 20px;">容器尺寸无效 (0x0)</div>';
@@ -219,7 +221,7 @@ function renderChart() {
   }
   catch (error) {
     console.error('[EchartsRenderer] 图表渲染失败:', error);
-    refEle.value.innerHTML = '<div style="color: red; padding: 20px;">渲染失败: ' + error + '</div>';
+    refEle.value.innerHTML = `<div style="color: red; padding: 20px;">渲染失败: ${error}</div>`;
   }
 }
 
@@ -262,7 +264,7 @@ watch(
       }, 50);
     });
   },
-  { deep: true }
+  { deep: true },
 );
 
 // 清理资源
@@ -277,7 +279,9 @@ onUnmounted(() => {
 <template>
   <div class="echarts-container">
     <!-- 副标题（可选） -->
-    <div v-if="title()" class="echarts-title">{{ title() }}</div>
+    <div v-if="title()" class="echarts-title">
+      {{ title() }}
+    </div>
     <!-- 图表容器 -->
     <div
       ref="refEle"
@@ -289,7 +293,7 @@ onUnmounted(() => {
         borderRadius: '8px',
         overflow: 'hidden',
         backgroundColor: theme() === 'light' ? '#fff' : '#1a1a1a',
-        boxSizing: 'border-box'
+        boxSizing: 'border-box',
       }"
     />
   </div>
