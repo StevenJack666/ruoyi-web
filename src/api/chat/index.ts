@@ -37,3 +37,8 @@ export function uploadFile(file: File) {
   console.log('formData-formData', formData)
   return post('/resource/oss/fileUpload', formData).json();
 }
+
+// 获取agent列表
+export function getAgentList(params: GetChatListParams) {
+  return get<ChatMessageVo[]>('/agent/market/list', params).json();
+}

@@ -9,7 +9,7 @@ import { useHookFetch } from "hook-fetch/vue";
 import { Sender } from "vue-element-plus-x";
 import { useRoute } from "vue-router";
 import { send } from "@/api";
-import { getKnowledgeList, getWorkflowList } from "@/api/chat";
+import { getKnowledgeList, getWorkflowList, getAgentList } from "@/api/chat";
 import FilesSelect from "@/components/FilesSelect/index.vue";
 import ModelSelect from "@/components/ModelSelect/index.vue";
 import { useChatStore } from "@/stores/modules/chat";
@@ -63,6 +63,7 @@ const isWebSearchEnabled = ref(false);
 const knowledgeList = ref<any[]>([]);
 
 const workflowList = ref<any[]>([]);
+const agentList = ref<any[]>([]);
 
 // 知识库弹窗状态
 const knowledgePopoverRef = ref();
@@ -70,12 +71,20 @@ const isKnowledgePopoverVisible = ref(false);
 const selectedKnowledgeId = ref<string>("");
 const selectedKnowledgeName = ref<string>("知识库");
 const isWorkflowVisible = ref(false);
+const isAgentVisible = ref(false);
 const selectedWorkflowName = ref<string>("工作流");
-
+const selectedAgentName = ref<string>("推理");
 const workflowParams = ref<AnyObject>({
   pageSize: 10,
   currentPage: 1,
 });
+
+const agentParams = ref<AnyObject>({
+  pageSize: 10,
+  pageNum: 1,
+});
+
+const agentMarketId = ref<string>("");
 
 const workFlowRunner = ref<AnyObject>({});
 const reSumeRunner = ref<AnyObject>({});
@@ -85,6 +94,8 @@ const fileRunner = ref<AnyObject>({});
 const isUploadFile = ref(false);
 // 是否正在加载
 const isWorkflowLoading = ref(false);
+const isAgentLoading = ref(false);
+const hasMoreAgent = ref(true);
 // 是否还有更多数据
 const hasMoreWorkflows = ref(true);
 
@@ -182,6 +193,18 @@ function chooseWorkflowItem(item: any) {
   console.log("workFlowRunner", workFlowRunner.value);
 }
 
+function chooseAgentItem(item: any) {
+  if (selectedAgentName.value === item.marketName) {
+    selectedAgentName.value = "推理";
+    isAgentVisible.value = false;
+  } else {
+    isAgentVisible.value = true;
+    selectedAgentName.value = item.marketName;
+  }
+  // enableThinking.value = true;
+  agentMarketId.value = item.id;
+}
+
 // 监听滚动事件
 function handleScroll(event: Event) {
   const target = event.target as HTMLElement;
@@ -194,6 +217,20 @@ function handleScroll(event: Event) {
     hasMoreWorkflows.value
   ) {
     loadWorkflowList(true); // 加载更多
+  }
+}
+
+function agentHandleScroll(event: Event) {
+  const target = event.target as HTMLElement;
+  const { scrollTop, scrollHeight, clientHeight } = target;
+
+  // 判断是否滚动到底部
+  if (
+    scrollTop + clientHeight >= scrollHeight - 10 &&
+    !isAgentLoading.value &&
+    hasMoreAgent.value
+  ) {
+    loadAgentList(true); // 加载更多
   }
 }
 
@@ -229,6 +266,41 @@ async function loadWorkflowList(isLoadMore = false) {
     hasMoreWorkflows.value = false; // 出错时也停止加载
   } finally {
     isWorkflowLoading.value = false;
+  }
+}
+
+// 加载agent列表
+async function loadAgentList(isLoadMore = false) {
+  if (isAgentLoading.value || !hasMoreAgent.value) return; // 防止重复请求或无数据时继续加载
+  isAgentLoading.value = true;
+  try {
+    const response = await getAgentList(agentParams.value);
+    console.log("agent列表:", response);
+    if (response?.rows && Array.isArray(response.rows)) {
+      const newRecords = response.rows;
+
+      if (isLoadMore) {
+        // 追加数据
+        agentList.value = [...agentList.value, ...newRecords];
+      } else {
+        // 替换数据（首次加载）
+        agentList.value = newRecords;
+      }
+
+      // 更新分页参数
+      agentParams.value.pageNum += 1;
+
+      // 判断是否还有更多数据
+      hasMoreAgent.value = response.total > agentList.value.length;
+    } else {
+      // 如果返回数据为空或格式不正确，标记为无更多数据
+      hasMoreAgent.value = false;
+    }
+  } catch (error) {
+    console.error("Failed to load workflow list:", error);
+    hasMoreAgent.value = false; // 出错时也停止加载
+  } finally {
+    isAgentLoading.value = false;
   }
 }
 // 加载知识库列表
@@ -287,11 +359,29 @@ onMounted(async () => {
     localStorage.removeItem("isWorkflowVisible");
   }
 
+  const isAgent = localStorage.getItem("isAgentVisible");
+  if (isAgent === "true") {
+    isAgentVisible.value = true;
+    localStorage.removeItem("isAgentVisible");
+  }
+
+  const agentMarketIdStr = localStorage.getItem("agentMarketId");
+  if (agentMarketIdStr) {
+    agentMarketId.value = agentMarketIdStr;
+    localStorage.removeItem("agentMarketId");
+  }
+
   const workFlowRunnerStr = localStorage.getItem("workFlowRunner");
   if (workFlowRunnerStr) {
     const workFlowRunnerObj = JSON.parse(workFlowRunnerStr);
     workFlowRunner.value = { ...workFlowRunnerObj };
     localStorage.removeItem("workFlowRunner");
+  }
+
+  const selectedAgentNameStr = localStorage.getItem("selectedAgentName");
+  if (selectedAgentNameStr) {
+    selectedAgentName.value = selectedAgentNameStr;
+    localStorage.removeItem("selectedAgentName");
   }
 
   const selectedWorkflowNameStr = localStorage.getItem("selectedWorkflowName");
@@ -318,6 +408,8 @@ onMounted(async () => {
   await loadKnowledgeList();
 
   await loadWorkflowList();
+
+  await loadAgentList();
 
   // 从 store 中同步知识库选择状态
   if (chatStore.knowledgeId) {
@@ -549,7 +641,9 @@ async function startSSE(chatContent: string) {
       sessionId: route.params?.id !== "not_login" ? String(route.params?.id) : undefined,
       userId: userStore.userInfo?.userId,
       model: modelStore.currentModelInfo.modelName ?? "",
-      enableThinking: isReasoningEnabled.value,
+      // enableThinking: isReasoningEnabled.value,
+      enableThinking: isAgentVisible.value,
+      agentMarketId: isAgentVisible.value ? agentMarketId.value : "",
       enableInternet: isWebSearchEnabled.value,
       knowledgeId: chatStore.knowledgeId || undefined,
       enableWorkFlow: isWorkflowVisible.value,
@@ -1040,7 +1134,7 @@ watch(
 
               <!-- 推理和联网按钮 -->
               <div class="feature-buttons">
-                <div
+                <!-- <div
                   class="feature-btn"
                   :class="{ active: isReasoningEnabled }"
                   @click="isReasoningEnabled = !isReasoningEnabled"
@@ -1049,8 +1143,48 @@ watch(
                     <Operation />
                   </el-icon>
                   <span class="feature-text">推理</span>
-                </div>
-                <div
+                </div> -->
+
+                <el-popover
+                  ref="knowledgePopoverRef"
+                  placement="top-start"
+                  :width="280"
+                  trigger="click"
+                  popper-class="knowledge-popover"
+                >
+                  <template #default>
+                    <div class="knowledge-list-container">
+                      <div class="knowledge-list" @scroll="agentHandleScroll">
+                        <div
+                          v-for="item in agentList"
+                          :key="item.id"
+                          class="knowledge-item"
+                          @click="chooseAgentItem(item)"
+                          :class="{ 'is-selected': selectedAgentName === item.marketName }"
+                        >
+                          <div class="item-name">
+                            {{ item.marketName }}
+                          </div>
+                        </div>
+                        <!-- 加载提示 -->
+                        <div v-if="isAgentLoading" class="loading-tip">加载中...</div>
+                      </div>
+                    </div>
+                  </template>
+                  <template #reference>
+                    <div
+                      class="feature-btn"
+                      :class="{ active: isAgentVisible }"
+                      @click="isAgentVisible = !isAgentVisible"
+                    >
+                      <el-icon class="feature-icon">
+                        <SetUp />
+                      </el-icon>
+                      <span class="feature-text">{{ selectedAgentName }}</span>
+                    </div>
+                  </template>
+                </el-popover>
+                <!-- <div
                   class="feature-btn"
                   :class="{ active: isWebSearchEnabled }"
                   @click="isWebSearchEnabled = !isWebSearchEnabled"
@@ -1059,7 +1193,7 @@ watch(
                     <ChromeFilled />
                   </el-icon>
                   <span class="feature-text">联网</span>
-                </div>
+                </div> -->
 
                 <el-popover
                   ref="knowledgePopoverRef"
