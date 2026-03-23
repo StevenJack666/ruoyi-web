@@ -1,131 +1,136 @@
 <script lang="ts" setup>
-import { Check, Picture as IconPicture, Refresh } from '@element-plus/icons-vue';
+import type { LoginUser } from '@/api/auth/types';
+import { Picture as IconPicture, Loading, Refresh } from '@element-plus/icons-vue';
 import { useCountdown } from '@vueuse/core';
-import { useQRCode } from '@vueuse/integrations/useQRCode';
 import { onBeforeUnmount, onMounted, ref, shallowRef } from 'vue';
+import { useUserStore } from '@/stores';
+import { get } from '@/utils/request';
+
+// 微信二维码响应类型
+interface WeixinQrCode {
+  ticket: string;
+  qrCodeUrl: string;
+}
+
+// 用户 Store
+const userStore = useUserStore();
 
 // 响应式状态
-const urlText = shallowRef('');
-const qrCodeUrl = useQRCode(urlText);
+const qrCodeUrl = shallowRef('');
+const currentTicket = shallowRef('');
 const isExpired = ref(false);
-const isScanned = ref(false); // 新增：是否已扫码
-const isConfirming = ref(false); // 新增：是否进入确认登录阶段
-const confirmCountdownSeconds = shallowRef(180); // 确认登录倒计时（3分钟）
+const isLoading = ref(true); // 是否正在加载
 
-// 二维码倒计时实例
-const { start: qrStart, stop: qrStop } = useCountdown(shallowRef(60), {
+// 二维码倒计时实例（10分钟 = 600秒）
+const { start: qrStart, stop: qrStop } = useCountdown(shallowRef(600), {
   interval: 1000,
   onComplete: () => {
     isExpired.value = true;
-    stopPolling(); // 二维码过期时停止轮询
-  },
-});
-
-// 确认登录倒计时实例
-const { start: confirmStart, stop: confirmStop } = useCountdown(confirmCountdownSeconds, {
-  interval: 1000,
-  onComplete: () => {
-    isExpired.value = true;
-    isConfirming.value = false;
-    stopPolling(); // 确认倒计时结束时停止轮询
+    stopPolling();
   },
 });
 
 // 轮询相关
-let scanPolling: number | null = null;
-let confirmPolling: number | null = null;
+let loginPolling: number | null = null;
 
-// 模拟后端接口 这里返回新的二维码地址
-async function fetchNewQRCode() {
-  await new Promise(resolve => setTimeout(resolve, 500));
-  return `https://login-api.com/qr/${Date.now()}`;
-}
-// 模拟后端接口 这里返回是否已扫码
-async function checkScanStatus() {
-  // 模拟扫码状态接口（实际应调用后端接口）
-  await new Promise(resolve => setTimeout(resolve, 300));
-  return Math.random() > 0.3; // 30%概率未扫码，70%概率已扫码
+/** 获取二维码 */
+async function fetchQrCode() {
+  try {
+    isLoading.value = true;
+    isExpired.value = false;
+
+    const response = await get<WeixinQrCode>('/user/qrcode').json();
+    console.log('二维码响应:', response);
+
+    // hook-fetch 返回的 data 字段就是后端的 data 内容
+    if (response.data) {
+      currentTicket.value = response.data.ticket;
+      qrCodeUrl.value = response.data.qrCodeUrl;
+
+      // 开始倒计时和轮询
+      qrStart(shallowRef(600));
+      startLoginPolling();
+    }
+  }
+  catch (error) {
+    console.error('获取二维码失败:', error);
+    isExpired.value = true;
+  }
+  finally {
+    isLoading.value = false;
+  }
 }
 
-// 模拟后端接口 这里返回扫码后是否已确认
-async function checkConfirmStatus() {
-  // 模拟确认登录接口（实际应调用后端接口）
-  await new Promise(resolve => setTimeout(resolve, 200));
-  return Math.random() > 0.5; // 50%概率已确认
-}
-
-// 模拟登录逻辑 如果在客户端已确认，则会调用这个方法进行登录
-async function mockLogin() {
-  // 模拟登录成功逻辑
-  console.log('模拟调用登录接口...');
-  await new Promise(resolve => setTimeout(resolve, 500));
-  console.log('模拟调用登录成功...');
-}
-
-/** 停止所有轮询 */
+/** 停止轮询 */
 function stopPolling() {
-  if (scanPolling)
-    clearInterval(scanPolling);
-  if (confirmPolling)
-    clearInterval(confirmPolling);
-  scanPolling = null;
-  confirmPolling = null;
+  if (loginPolling) {
+    clearInterval(loginPolling);
+    loginPolling = null;
+  }
 }
 
 /** 刷新二维码 */
 async function handleRefresh() {
-  isExpired.value = false;
-  isScanned.value = false;
-  isConfirming.value = false;
   stopPolling();
-  qrStart(shallowRef(60));
-  const newUrl = await fetchNewQRCode();
-  urlText.value = newUrl;
+  qrStop();
+  await fetchQrCode();
 }
 
-/** 启动扫码状态轮询 */
-function startScanPolling() {
-  scanPolling = setInterval(async () => {
-    if (!isExpired.value && !isScanned.value) {
-      const scanned = await checkScanStatus();
-      if (scanned) {
-        isScanned.value = true;
-        isConfirming.value = true;
-        confirmStart(confirmCountdownSeconds); // 启动确认倒计时
-        startConfirmPolling(); // 开始确认登录轮询
-        stopPolling(); // 停止扫码轮询
+/** 启动登录状态轮询 */
+function startLoginPolling() {
+  stopPolling();
+  loginPolling = setInterval(async () => {
+    if (!currentTicket.value || isExpired.value)
+      return;
+
+    try {
+      const clientId = import.meta.env.VITE_CLIENT_ID || 'pc';
+      const response = await get<LoginUser>('/user/login/qrcode', {
+        ticket: currentTicket.value,
+        clientId,
+      }).json();
+
+      if (response.data) {
+        // 登录成功，停止轮询
+        loginSuccess(response.data);
       }
     }
-  }, 2000); // 每2秒轮询一次
+    catch (error) {
+      // 接口返回非200状态码，继续轮询（等待扫码）
+      // 只有网络错误等才打印日志
+      if (error && typeof error === 'object' && 'result' in error) {
+        // 业务失败（未扫码），静默处理
+      }
+      else {
+        console.error('检查登录状态失败:', error);
+      }
+    }
+  }, 5000); // 每5秒轮询一次
 }
 
-/** 启动确认登录轮询 */
-function startConfirmPolling() {
-  confirmPolling = setInterval(async () => {
-    if (isConfirming.value && !isExpired.value) {
-      const confirmed = await checkConfirmStatus();
-      if (confirmed) {
-        stopPolling();
-        confirmStop();
-        await mockLogin();
-        handleRefresh(); // 登录成功后刷新二维码
-      }
-    }
-  }, 2000); // 每2秒轮询一次
+/** 登录成功处理 */
+function loginSuccess(userInfo: LoginUser) {
+  stopPolling();
+  qrStop();
+
+  // 设置用户信息
+  if (userInfo.token) {
+    userStore.setToken(userInfo.token);
+  }
+  userStore.setUserInfo(userInfo);
+
+  // 关闭登录弹框
+  userStore.closeLoginDialog();
 }
 
 /** 组件初始化 */
 onMounted(async () => {
-  const initialUrl = await fetchNewQRCode();
-  urlText.value = initialUrl;
-  qrStart();
-  startScanPolling(); // 初始启动扫码轮询
+  await fetchQrCode();
 });
 
 /** 组件卸载清理 */
 onBeforeUnmount(() => {
   qrStop();
-  confirmStop();
   stopPolling();
 });
 </script>
@@ -133,11 +138,20 @@ onBeforeUnmount(() => {
 <template>
   <div class="qr-wrapper">
     <div class="tip">
-      请使用手机扫码登录
+      请使用微信扫码登录
     </div>
 
     <div class="qr-img-wrapper">
-      <el-image v-loading="!qrCodeUrl" :src="qrCodeUrl" alt="登录二维码" class="qr-img">
+      <!-- 加载中 -->
+      <div v-if="isLoading" class="loading-wrapper">
+        <el-icon class="loading-icon is-loading">
+          <Loading />
+        </el-icon>
+        <span>加载中...</span>
+      </div>
+
+      <!-- 二维码图片 -->
+      <el-image v-else-if="qrCodeUrl" :src="qrCodeUrl" alt="登录二维码" class="qr-img">
         <template #error>
           <el-icon><IconPicture /></el-icon>
         </template>
@@ -155,22 +169,10 @@ onBeforeUnmount(() => {
           </el-button>
         </div>
       </div>
+    </div>
 
-      <!-- 扫码成功覆盖层 -->
-      <div v-if="isScanned && !isExpired" class="scanned-overlay">
-        <div class="scanned-content">
-          <p class="scanned-text">
-            <el-icon class="success-icon">
-              <Check />
-            </el-icon>
-            已扫码
-          </p>
-
-          <p class="scanned-text">
-            请在手机端确认登录
-          </p>
-        </div>
-      </div>
+    <div class="login-tips">
+      <p>打开微信扫一扫，快速登录</p>
     </div>
   </div>
 </template>
@@ -181,11 +183,13 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 8px;
   align-items: center;
+
   .tip {
     font-size: 16px;
     font-weight: 500;
     color: #303133;
   }
+
   .qr-img-wrapper {
     position: relative;
     width: 180px;
@@ -195,19 +199,38 @@ onBeforeUnmount(() => {
     border: 1px solid #f0f2f5;
     border-radius: 16px;
     box-shadow: 0 2px 12px 0 rgb(0 0 0 / 8%);
+
+    .loading-wrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      color: #909399;
+      font-size: 14px;
+
+      .loading-icon {
+        font-size: 24px;
+        color: #409eff;
+      }
+    }
+
     .qr-img {
       display: flex;
       align-items: center;
       justify-content: center;
       width: 100%;
       height: 100%;
+
       .el-icon {
         font-size: 18px;
         color: #909399;
       }
     }
-    .expired-overlay,
-    .scanned-overlay {
+
+    .expired-overlay {
       position: absolute;
       top: 0;
       left: 0;
@@ -216,47 +239,28 @@ onBeforeUnmount(() => {
       justify-content: center;
       width: 100%;
       height: 100%;
-      border-radius: 16px;
-    }
-    .expired-overlay {
       cursor: pointer;
       background: hsl(0deg 0% 100% / 95%);
+      border-radius: 16px;
+
       .expired-content {
         display: flex;
         flex-direction: column;
         gap: 8px;
         text-align: center;
+
         .expired-text {
           font-size: 14px;
           color: #909399;
         }
       }
     }
-    .scanned-overlay {
-      cursor: default;
-      background: hsl(120deg 60% 97% / 95%);
-      .scanned-content {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        align-items: center;
-        .success-icon {
-          font-size: 18px;
-          color: #67c23a;
-        }
-        .scanned-text {
-          display: flex;
-          gap: 8px;
-          align-items: center;
-          font-size: 14px;
-          color: #606266;
-        }
-        .countdown-text {
-          font-size: 12px;
-          color: #909399;
-        }
-      }
-    }
+  }
+
+  .login-tips {
+    font-size: 12px;
+    color: #909399;
+    text-align: center;
   }
 }
 </style>
