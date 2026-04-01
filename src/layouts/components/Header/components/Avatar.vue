@@ -4,12 +4,16 @@ import Popover from '@/components/Popover/index.vue';
 import SvgIcon from '@/components/SvgIcon/index.vue';
 import { useUserStore } from '@/stores';
 import { useSessionStore } from '@/stores/modules/session';
+import avatar from '@/assets/images/avatar.webp';
 
 const userStore = useUserStore();
 const sessionStore = useSessionStore();
+// const src = computed(
+//   () => userStore.userInfo?.avatar ?? 'https://avatars.githubusercontent.com/u/32251822?s=96&v=4',
+// );
 const src = computed(
-  () => userStore.userInfo?.avatar ?? 'https://avatars.githubusercontent.com/u/32251822?s=96&v=4',
-);
+  () => userStore.userInfo?.avatar ?? avatar,
+)
 
 /* 弹出面板 开始 */
 const popoverStyle = ref({

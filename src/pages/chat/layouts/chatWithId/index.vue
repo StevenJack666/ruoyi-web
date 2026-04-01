@@ -1,38 +1,38 @@
 <!-- 每个回话对应的聊天内容 -->
 <script setup lang="ts">
-import type { AnyObject } from 'typescript-api-pro';
-import type { BubbleProps } from 'vue-element-plus-x/types/Bubble';
-import type { BubbleListInstance } from 'vue-element-plus-x/types/BubbleList';
-import type { FilesCardProps } from 'vue-element-plus-x/types/FilesCard';
-import type { ThinkingStatus } from 'vue-element-plus-x/types/Thinking';
-import { useHookFetch } from 'hook-fetch/vue';
-import { nextTick } from 'vue';
-import { Sender } from 'vue-element-plus-x';
-import { useRoute } from 'vue-router';
-import { send } from '@/api';
-import { getKnowledgeList } from '@/api/chat';
-import FilesSelect from '@/components/FilesSelect/index.vue';
-import ModelSelect from '@/components/ModelSelect/index.vue';
-import { useChatStore } from '@/stores/modules/chat';
-import { useFilesStore } from '@/stores/modules/files';
-import { useModelStore } from '@/stores/modules/model';
-import { useSessionStore } from '@/stores/modules/session';
-import { useUserStore } from '@/stores/modules/user';
-import { codeXRender } from '@/utils/markdownRenderers';
+import type { AnyObject } from "typescript-api-pro";
+import type { BubbleProps } from "vue-element-plus-x/types/Bubble";
+import type { BubbleListInstance } from "vue-element-plus-x/types/BubbleList";
+import type { FilesCardProps } from "vue-element-plus-x/types/FilesCard";
+import type { ThinkingStatus } from "vue-element-plus-x/types/Thinking";
+import { useHookFetch } from "hook-fetch/vue";
+import { Sender } from "vue-element-plus-x";
+import { useRoute } from "vue-router";
+import { send } from "@/api";
+import { getKnowledgeList, getWorkflowList, getAgentList } from "@/api/chat";
+import FilesSelect from "@/components/FilesSelect/index.vue";
+import ModelSelect from "@/components/ModelSelect/index.vue";
+import { useChatStore } from "@/stores/modules/chat";
+import { useFilesStore } from "@/stores/modules/files";
+import { useModelStore } from "@/stores/modules/model";
+import { useSessionStore } from "@/stores/modules/session";
+import { useUserStore } from "@/stores/modules/user";
+import { codeXRender } from "@/utils/markdownRenderers";
 
 type MessageItem = BubbleProps & {
   key: number;
-  role: 'ai' | 'user' | 'system';
+  role: "ai" | "user" | "system";
   avatar: string;
   thinkingStatus?: ThinkingStatus;
   thinlCollapse?: boolean;
   reasoning_content?: string;
-  class?: string;
+  fileList?: FilesCardProps[]; // 新增字段
 };
 const copyIconMap = ref<Record<number, string>>({}); // 记录每条消息的复制按钮图标
 const editingMessageKeys = ref<number[]>([]); // 跟踪多个编辑中的消息
 const editedContents = ref<Record<number, string>>({}); // 存储每条消息的临时编辑内容
 
+const copyIcon = ref("CopyDocument");
 const route = useRoute();
 const chatStore = useChatStore();
 const modelStore = useModelStore();
@@ -47,10 +47,10 @@ const userFileList = ref([]);
 // 用户头像
 const avatar = computed(() => {
   const userInfo = userStore.userInfo;
-  return userInfo?.avatar || 'https://avatars.githubusercontent.com/u/32251822?s=96&v=4';
+  return userInfo?.avatar || "https://avatars.githubusercontent.com/u/32251822?s=96&v=4";
 });
 
-const inputValue = ref('');
+const inputValue = ref("");
 const senderRef = ref<InstanceType<typeof Sender> | null>(null);
 const bubbleItems = ref<MessageItem[]>([]);
 const bubbleListRef = ref<BubbleListInstance | null>(null);
@@ -62,21 +62,18 @@ const isWebSearchEnabled = ref(false);
 // 知识库列表配置
 const knowledgeList = ref<any[]>([]);
 
-const workflowList = ref<any[]>([
-  {
-    id: 1,
-    name: '工作流1',
-  },
-]);
+const workflowList = ref<any[]>([]);
+const agentList = ref<any[]>([]);
 
 // 知识库弹窗状态
 const knowledgePopoverRef = ref();
 const isKnowledgePopoverVisible = ref(false);
-const selectedKnowledgeId = ref<string>('');
-const selectedKnowledgeName = ref<string>('知识库');
+const selectedKnowledgeId = ref<string>("");
+const selectedKnowledgeName = ref<string>("知识库");
 const isWorkflowVisible = ref(false);
-const selectedWorkflowName = ref<string>('工作流');
-
+const isAgentVisible = ref(false);
+const selectedWorkflowName = ref<string>("工作流");
+const selectedAgentName = ref<string>("推理");
 const workflowParams = ref<AnyObject>({
   pageSize: 10,
   currentPage: 1,
@@ -104,16 +101,66 @@ const hasMoreWorkflows = ref(true);
 
 const isResume = ref(false);
 
-const {
-  stream,
-  loading: isLoading,
-  cancel,
-} = useHookFetch({
-  request: send,
-  onError: (err) => {
-    console.warn('测试错误拦截', err);
-  },
-});
+// 跟踪当前节点 ID
+let currentNodeId: string | null = null;
+
+// 处理 NODE_CHUNK 事件的函数
+function handleNodeChunk(data: any, isLastChunk = false) {
+  const nodeId = data.nodeId; // 从数据中提取节点 ID
+  const content = data.content; // 从数据中提取内容
+
+  console.log("nodeId-nodeId", nodeId, currentNodeId);
+
+  console.log("content", content);
+
+  // 判断节点 ID 是否发生变化
+
+  if (nodeId && nodeId !== currentNodeId) {
+    // 创建一个新的系统消息气泡
+    if (currentNodeId !== null) {
+      const lastMessage = bubbleItems.value[bubbleItems.value.length - 1];
+      if (lastMessage) {
+        lastMessage.thinkingStatus = "end";
+        lastMessage.loading = false;
+      }
+    }
+    if (content && currentNodeId !== null) {
+      addMessage("", false); // 添加一个空的系统消息气泡
+    }
+    currentNodeId = nodeId; // 更新当前节点 ID
+  }
+
+  if (nodeId && content) {
+    // 将内容追加到最新的气泡中
+    const lastMessage = bubbleItems.value[bubbleItems.value.length - 1];
+    if (lastMessage && lastMessage.role === "system") {
+      lastMessage.content += content;
+      lastMessage.thinkingStatus = "end";
+      lastMessage.loading = false;
+    }
+  }
+
+  if (isLastChunk) {
+    //  如果是最后一块数据，清理空白气泡
+    const lastMessage = bubbleItems.value[bubbleItems.value.length - 1];
+    if (lastMessage && lastMessage.role === "system" && !lastMessage.content.trim()) {
+      // 删除最后一个空白气泡
+      bubbleItems.value.pop();
+    }
+
+    if (lastMessage) {
+      lastMessage.thinkingStatus = "end";
+      lastMessage.loading = false;
+    }
+  }
+
+  if (isResume.value) {
+    const lastMessage = bubbleItems.value[bubbleItems.value.length - 1];
+    lastMessage.thinkingStatus = "end";
+    lastMessage.loading = false;
+    isLoading.value = false;
+  }
+}
 
 function chooseWorkflowItem(item: any) {
   // isWorkflowVisible.value = true;
@@ -126,15 +173,15 @@ function chooseWorkflowItem(item: any) {
   }
 
   workFlowRunner.value.uuid = item.uuid;
-  const nodes = [...item.nodes];
-  const user_inputs = nodes[0].inputConfig.user_inputs[0];
-  const inputsObj = {
+  let nodes = [...item.nodes];
+  let user_inputs = nodes[0].inputConfig.user_inputs[0];
+  let inputsObj = {
     uuid: nodes[0].uuid,
     name: user_inputs.name,
     required: user_inputs.required,
     content: {
       title: user_inputs.title,
-      value: '',
+      value: "",
       type: user_inputs.type,
     },
   };
@@ -143,7 +190,19 @@ function chooseWorkflowItem(item: any) {
   isResume.value = false;
   reSumeRunner.value = {};
 
-  console.log('workFlowRunner', workFlowRunner.value);
+  console.log("workFlowRunner", workFlowRunner.value);
+}
+
+function chooseAgentItem(item: any) {
+  if (selectedAgentName.value === item.marketName) {
+    selectedAgentName.value = "推理";
+    isAgentVisible.value = false;
+  } else {
+    isAgentVisible.value = true;
+    selectedAgentName.value = item.marketName;
+  }
+  // enableThinking.value = true;
+  agentMarketId.value = item.id;
 }
 
 // 监听滚动事件
@@ -153,9 +212,9 @@ function handleScroll(event: Event) {
 
   // 判断是否滚动到底部
   if (
-    scrollTop + clientHeight >= scrollHeight - 10
-    && !isWorkflowLoading.value
-    && hasMoreWorkflows.value
+    scrollTop + clientHeight >= scrollHeight - 10 &&
+    !isWorkflowLoading.value &&
+    hasMoreWorkflows.value
   ) {
     loadWorkflowList(true); // 加载更多
   }
@@ -177,20 +236,18 @@ function agentHandleScroll(event: Event) {
 
 // 加载工作流列表
 async function loadWorkflowList(isLoadMore = false) {
-  if (isWorkflowLoading.value || !hasMoreWorkflows.value)
-    return; // 防止重复请求或无数据时继续加载
+  if (isWorkflowLoading.value || !hasMoreWorkflows.value) return; // 防止重复请求或无数据时继续加载
   isWorkflowLoading.value = true;
   try {
     const response = await getWorkflowList(workflowParams.value);
-    console.log('工作流列表:', response);
+    console.log("工作流列表:", response);
     if (response?.data && response.data?.records && Array.isArray(response.data.records)) {
       const newRecords = response.data.records;
 
       if (isLoadMore) {
         // 追加数据
         workflowList.value = [...workflowList.value, ...newRecords];
-      }
-      else {
+      } else {
         // 替换数据（首次加载）
         workflowList.value = newRecords;
       }
@@ -200,18 +257,50 @@ async function loadWorkflowList(isLoadMore = false) {
 
       // 判断是否还有更多数据
       hasMoreWorkflows.value = response.data.total > workflowList.value.length;
-    }
-    else {
+    } else {
       // 如果返回数据为空或格式不正确，标记为无更多数据
       hasMoreWorkflows.value = false;
     }
-  }
-  catch (error) {
-    console.error('Failed to load workflow list:', error);
+  } catch (error) {
+    console.error("Failed to load workflow list:", error);
     hasMoreWorkflows.value = false; // 出错时也停止加载
-  }
-  finally {
+  } finally {
     isWorkflowLoading.value = false;
+  }
+}
+
+// 加载agent列表
+async function loadAgentList(isLoadMore = false) {
+  if (isAgentLoading.value || !hasMoreAgent.value) return; // 防止重复请求或无数据时继续加载
+  isAgentLoading.value = true;
+  try {
+    const response = await getAgentList(agentParams.value);
+    console.log("agent列表:", response);
+    if (response?.rows && Array.isArray(response.rows)) {
+      const newRecords = response.rows;
+
+      if (isLoadMore) {
+        // 追加数据
+        agentList.value = [...agentList.value, ...newRecords];
+      } else {
+        // 替换数据（首次加载）
+        agentList.value = newRecords;
+      }
+
+      // 更新分页参数
+      agentParams.value.pageNum += 1;
+
+      // 判断是否还有更多数据
+      hasMoreAgent.value = response.total > agentList.value.length;
+    } else {
+      // 如果返回数据为空或格式不正确，标记为无更多数据
+      hasMoreAgent.value = false;
+    }
+  } catch (error) {
+    console.error("Failed to load workflow list:", error);
+    hasMoreAgent.value = false; // 出错时也停止加载
+  } finally {
+    isAgentLoading.value = false;
   }
 }
 // 加载知识库列表
@@ -222,18 +311,17 @@ async function loadKnowledgeList() {
       knowledgeList.value = response.rows.map((item: any) => ({
         id: item.id,
         name: item.name,
-        icon: 'Document',
+        icon: "Document",
       }));
     }
-  }
-  catch (error) {
-    console.error('Failed to load knowledge list:', error);
+  } catch (error) {
+    console.error("Failed to load knowledge list:", error);
   }
 }
 
 // 插入知识库标签
 function insertKnowledgeTag(knowledgeId: string) {
-  const knowledge = knowledgeList.value.find(k => k.id === knowledgeId);
+  const knowledge = knowledgeList.value.find((k) => k.id === knowledgeId);
   if (knowledge) {
     selectedKnowledgeId.value = knowledgeId;
     selectedKnowledgeName.value = knowledge.name;
@@ -245,45 +333,77 @@ function insertKnowledgeTag(knowledgeId: string) {
 
 // 清除知识库选择
 function clearKnowledgeSelection() {
-  selectedKnowledgeId.value = '';
-  selectedKnowledgeName.value = '知识库';
-  chatStore.setKnowledgeId('');
+  selectedKnowledgeId.value = "";
+  selectedKnowledgeName.value = "知识库";
+  chatStore.setKnowledgeId("");
 }
 
 // 从 localStorage 恢复推理状态
 onMounted(async () => {
   bubbleItems.value.forEach((item) => {
-    copyIconMap.value[item.key] = 'CopyDocument';
+    copyIconMap.value[item.key] = "CopyDocument";
   });
-  const enableThinking = localStorage.getItem('enableThinking');
-  if (enableThinking === 'true') {
+  const enableThinking = localStorage.getItem("enableThinking");
+  if (enableThinking === "true") {
     isReasoningEnabled.value = true;
-    localStorage.removeItem('enableThinking');
+    localStorage.removeItem("enableThinking");
   }
-  const enableInternet = localStorage.getItem('enableInternet');
-  if (enableInternet === 'true') {
+  const enableInternet = localStorage.getItem("enableInternet");
+  if (enableInternet === "true") {
     isWebSearchEnabled.value = true;
-    localStorage.removeItem('enableInternet');
+    localStorage.removeItem("enableInternet");
   }
-  const isWorkflow = localStorage.getItem('isWorkflowVisible');
-  if (isWorkflow === 'true') {
+  const isWorkflow = localStorage.getItem("isWorkflowVisible");
+  if (isWorkflow === "true") {
     isWorkflowVisible.value = true;
-    localStorage.removeItem('isWorkflowVisible');
+    localStorage.removeItem("isWorkflowVisible");
   }
 
-  const workFlowRunnerStr = localStorage.getItem('workFlowRunner');
+  const isAgent = localStorage.getItem("isAgentVisible");
+  if (isAgent === "true") {
+    isAgentVisible.value = true;
+    localStorage.removeItem("isAgentVisible");
+  }
+
+  const agentMarketIdStr = localStorage.getItem("agentMarketId");
+  if (agentMarketIdStr) {
+    agentMarketId.value = agentMarketIdStr;
+    localStorage.removeItem("agentMarketId");
+  }
+
+  const workFlowRunnerStr = localStorage.getItem("workFlowRunner");
   if (workFlowRunnerStr) {
     const workFlowRunnerObj = JSON.parse(workFlowRunnerStr);
     workFlowRunner.value = { ...workFlowRunnerObj };
-    localStorage.removeItem('workFlowRunner');
+    localStorage.removeItem("workFlowRunner");
   }
 
-  const selectedWorkflowNameStr = localStorage.getItem('selectedWorkflowName');
+  const selectedAgentNameStr = localStorage.getItem("selectedAgentName");
+  if (selectedAgentNameStr) {
+    selectedAgentName.value = selectedAgentNameStr;
+    localStorage.removeItem("selectedAgentName");
+  }
+
+  const selectedWorkflowNameStr = localStorage.getItem("selectedWorkflowName");
   if (selectedWorkflowNameStr) {
     selectedWorkflowName.value = selectedWorkflowNameStr;
-    localStorage.removeItem('selectedWorkflowName');
+    localStorage.removeItem("selectedWorkflowName");
   }
 
+  const isUploadFileStr = localStorage.getItem("isUploadFile");
+  if (isUploadFileStr === "true") {
+    isUploadFile.value = true;
+  } else {
+    isUploadFile.value = false;
+  }
+
+  const fileRunnerStr = localStorage.getItem("fileRunner");
+  if (fileRunnerStr) {
+    const fileRunnerObj = JSON.parse(fileRunnerStr);
+    fileRunner.value = { ...fileRunnerObj };
+    localStorage.removeItem("fileRunner");
+  }
+  localStorage.removeItem("isUploadFile");
   // 加载知识库列表
   await loadKnowledgeList();
 
@@ -293,7 +413,7 @@ onMounted(async () => {
 
   // 从 store 中同步知识库选择状态
   if (chatStore.knowledgeId) {
-    const knowledge = knowledgeList.value.find(k => k.id === chatStore.knowledgeId);
+    const knowledge = knowledgeList.value.find((k) => k.id === chatStore.knowledgeId);
     if (knowledge) {
       selectedKnowledgeId.value = chatStore.knowledgeId;
       selectedKnowledgeName.value = knowledge.name;
@@ -301,6 +421,16 @@ onMounted(async () => {
   }
 });
 
+const {
+  stream,
+  loading: isLoading,
+  cancel,
+} = useHookFetch({
+  request: send,
+  onError: (err) => {
+    console.warn("测试错误拦截", err);
+  },
+});
 // 记录进入思考中
 let isThinking = false;
 
@@ -308,7 +438,7 @@ watch(
   () => route.params?.id,
   async (_id_) => {
     if (_id_) {
-      if (_id_ !== 'not_login') {
+      if (_id_ !== "not_login") {
         // 判断的当前会话id是否有聊天记录，有缓存则直接赋值展示
         if (chatStore.chatMap[`${_id_}`] && chatStore.chatMap[`${_id_}`].length) {
           bubbleItems.value = chatStore.chatMap[`${_id_}`] as MessageItem[];
@@ -331,41 +461,164 @@ watch(
       }
 
       // 如果本地有发送内容 ，则直接发送
-      const v = localStorage.getItem('chatContent');
+      const v = localStorage.getItem("chatContent");
       if (v) {
         // 发送消息
         setTimeout(() => {
           startSSE(v);
         }, 350);
 
-        localStorage.removeItem('chatContent');
+        localStorage.removeItem("chatContent");
       }
     }
   },
   { immediate: true, deep: true },
 );
 
+// 封装数据处理逻辑
+function handleDataChunk(chunk: AnyObject) {
+  console.log("isResume", isResume.value);
+  try {
+    // 新的 SSE 格式：data 字段直接包含内容
+    let messageData = chunk.data;
+
+    // 如果 chunk 本身就是从 result 中解出来的，可能需要直接用 chunk
+    if (!messageData && chunk.content) {
+      messageData = chunk.content;
+    }
+
+    if (!messageData) {
+      return;
+    }
+
+    // 处理不同的内容格式
+    let contentToAdd = "";
+    let reasoningToAdd = "";
+
+    // 如果是字符串，直接处理
+    if (typeof messageData === "string") {
+      contentToAdd = messageData;
+    }
+    // 如果是对象，提取 content 和 reasoning_content
+    else if (typeof messageData === "object") {
+      reasoningToAdd = messageData.reasoning_content || "";
+      contentToAdd = messageData.content || "";
+    }
+
+    // 处理推理内容
+    if (reasoningToAdd) {
+      const lastMsg = bubbleItems.value[bubbleItems.value.length - 1];
+      lastMsg.thinkingStatus = "thinking";
+      lastMsg.loading = true;
+      lastMsg.thinlCollapse = true;
+      if (bubbleItems.value.length) {
+        bubbleItems.value[bubbleItems.value.length - 1].reasoning_content += reasoningToAdd;
+      }
+    }
+
+    // 处理回复内容（包括 <think></think> 标签格式）
+    if (contentToAdd) {
+      let currentText = contentToAdd;
+      const lastMessage = bubbleItems.value[bubbleItems.value.length - 1];
+
+      // 1. 处理 <think> 标签之前的内容
+      if (!isThinking && currentText.includes("<think>")) {
+        const thinkIdx = currentText.indexOf("<think>");
+        if (thinkIdx > 0) {
+          const beforeThink = currentText.substring(0, thinkIdx);
+          lastMessage.content += beforeThink;
+        }
+        currentText = currentText.substring(thinkIdx + 7); // 移除 <think>
+        isThinking = true;
+        lastMessage.thinkingStatus = "thinking";
+        lastMessage.loading = true;
+        lastMessage.thinlCollapse = true;
+      }
+
+      // 2. 处理 </think> 标签及之前的内容
+      if (isThinking && currentText.includes("</think>")) {
+        const thinkEndIdx = currentText.indexOf("</think>");
+        if (thinkEndIdx > 0) {
+          const thinkContent = currentText.substring(0, thinkEndIdx);
+          lastMessage.reasoning_content += thinkContent;
+        }
+        currentText = currentText.substring(thinkEndIdx + 8); // 移除 </think>
+        isThinking = false;
+        lastMessage.thinkingStatus = "end";
+        lastMessage.loading = false;
+      }
+
+      // 3. 处理剩余内容（思考过程中未完成的部分 或 思考之后的部分）
+      if (currentText) {
+        if (isThinking) {
+          // 还在思考模式中，内容属于推理
+          lastMessage.reasoning_content += currentText;
+        } else {
+          if (isResume.value) {
+            lastMessage.thinkingStatus = "end";
+            lastMessage.loading = false;
+            isLoading.value = false;
+          }
+          // 已结束思考模式，内容属于最终回复
+          lastMessage.content += currentText;
+        }
+      }
+    }
+  } catch (err) {
+    console.error("解析数据时出错:", err);
+  }
+}
+
 // 封装错误处理逻辑
 function handleError(err: any) {
-  console.error('Fetch error:', err);
+  console.error("Fetch error:", err);
 }
 
 async function startSSE(chatContent: string) {
-  if (isWorkflowVisible.value && !Object.prototype.hasOwnProperty.call(workFlowRunner.value, 'inputs')) {
-    ElMessage.error('请选择工作流！');
+  currentNodeId = null; // 每次发送消息前先置空存储的nodeId 防止多余系统气泡生成
+
+  let filesList = [...filesStore.filesList];
+  if (filesList && filesList.length) {
+    filesList.map((item) => {
+      item.showDelIcon = false;
+      return item;
+    });
+  }
+  userFileList.value = filesList;
+  if (isWorkflowVisible.value && !workFlowRunner.value.hasOwnProperty("inputs")) {
+    ElMessage.error("请选择工作流！");
     return;
   }
   try {
     // 添加用户输入的消息
-    inputValue.value = '';
+    inputValue.value = "";
     addMessage(chatContent, true);
-    addMessage('', false);
+
+    // 2. 获取刚添加的消息对象
+    const newUserMessage = bubbleItems.value[bubbleItems.value.length - 1];
+
+    // 3. 处理文件列表
+    let filesList = [...filesStore.filesList];
+    if (filesList && filesList.length) {
+      filesList.map((item) => {
+        item.showDelIcon = false;
+        return item;
+      });
+    }
+
+    // 4. 将文件列表绑定到消息对象上
+    newUserMessage.fileList = filesList;
+
+    // 5. 清空 store 中的文件列表
+    filesStore.setFilesList([]);
+
+    addMessage("", false);
 
     // 这里有必要调用一下 BubbleList 组件的滚动到底部 手动触发 自动滚动
     bubbleListRef.value?.scrollToBottom();
 
     // 获取最后一条用户消息（后端做了长期记忆缓存，只需发送最新的用户消息）
-    const lastUserMessage = bubbleItems.value.filter((item: any) => item.role === 'user').pop();
+    const lastUserMessage = bubbleItems.value.filter((item: any) => item.role === "user").pop();
 
     // 处理工作流模式下json数据拼接
     if (isWorkflowVisible.value) {
@@ -377,30 +630,146 @@ async function startSSE(chatContent: string) {
     }
 
     for await (const chunk of stream({
-      model: modelStore.currentModelInfo.modelName ?? '',
-      content: lastUserMessage?.content ?? '',
-      sessionId: route.params?.id !== 'not_login' ? String(route.params?.id) : undefined,
-      enableThinking: isReasoningEnabled.value,
+      messages: lastUserMessage
+        ? [
+            {
+              role: lastUserMessage.role,
+              content: lastUserMessage.content,
+            },
+          ]
+        : [],
+      sessionId: route.params?.id !== "not_login" ? String(route.params?.id) : undefined,
+      userId: userStore.userInfo?.userId,
+      model: modelStore.currentModelInfo.modelName ?? "",
+      // enableThinking: isReasoningEnabled.value,
+      enableThinking: isAgentVisible.value,
+      agentMarketId: isAgentVisible.value ? agentMarketId.value : "",
       enableInternet: isWebSearchEnabled.value,
       knowledgeId: chatStore.knowledgeId || undefined,
-      workFlowRunner: isWorkflowVisible.value ? workFlowRunner.value : undefined,
-      reSumeRunner: isResume.value ? reSumeRunner.value : undefined,
-      isResume: isResume.value,
       enableWorkFlow: isWorkflowVisible.value,
+      workFlowRunner: workFlowRunner.value,
+      isResume: isResume.value,
+      reSumeRunner: reSumeRunner.value,
+      isUploadFile: isUploadFile.value,
+      fileRunner: fileRunner.value,
+      fileMetaData: JSON.stringify(userFileList.value),
     })) {
-      // 处理数据块 - chunk.result 可能是字符串或对象
-      // 返回 true 表示流结束
-      if (handleDataChunk(chunk.result)) {
-        break; // 提前结束流处理
+      // 提取原始数据
+      const rawData = chunk.result || chunk.source;
+      // 处理连接开始事件
+      if (rawData === ":connected") {
+        continue;
       }
-      // 等待 Vue 更新 DOM，实现真正的流式渲染
-      await nextTick();
+
+      // 处理连接结束事件
+      if (rawData === ":disconnected") {
+        break;
+      }
+      if (typeof rawData === "string" && rawData.includes("DONE") && rawData.includes("data:")) {
+        isResume.value = false;
+        reSumeRunner.value = {};
+        // 判断是否是最后一块数据
+        handleNodeChunk({}, true);
+      }
+      if (typeof rawData === "string" && rawData.includes("ERROR") && rawData.includes("data:")) {
+        isResume.value = false;
+        reSumeRunner.value = {};
+      }
+      // if (
+      //   typeof rawData === "string" &&
+      //   rawData.includes("NODE_WAIT_FEEDBACK_BY") &&
+      //   rawData.includes("data:")
+      // ) {
+      //   // 判断是否是最后一块数据
+      //   handleNodeChunk({}, true);
+      // }
+
+      if (typeof rawData === "string" && rawData.includes("START") && rawData.includes("data:")) {
+        isResume.value = true;
+        const dataMatch = rawData.match(/data:([\s\S]*?)(?=\nevent:|$)/);
+        let dataStr = dataMatch?.[1]?.trim();
+        let data = dataStr ? JSON.parse(dataStr) : null;
+        reSumeRunner.value.runtimeUuid = data.uuid;
+      }
+      if (isWorkflowVisible.value) {
+        if (
+          typeof rawData === "string" &&
+          (rawData.includes("NODE_CHUNK") || rawData.includes("NODE_WAIT_FEEDBACK_BY")) &&
+          rawData.includes("data:")
+        ) {
+          const eventMatch = rawData.match(/event:([\s\S]*?)\ndata:/);
+          const event = eventMatch ? eventMatch[1] : null;
+
+          let nodeUuid = "";
+          if (event.startsWith("[NODE_CHUNK_")) {
+            nodeUuid = event.replace("[NODE_CHUNK_", "").replace("]", "");
+          }
+          if (event.startsWith("[NODE_WAIT_FEEDBACK_BY_")) {
+            nodeUuid = event.replace("[NODE_WAIT_FEEDBACK_BY_", "").replace("]", "");
+          }
+
+          // 提取 data 字段的内容
+          const dataMatch = rawData.match(/data:([\s\S]*?)(?=\nevent:|$)/);
+          let data = dataMatch?.[1]?.trim();
+          const showData = {
+            nodeId: nodeUuid,
+            content: data,
+          };
+          if (data) {
+            data = data
+              .split("\ndata:")
+              .map((line) => line.trim())
+              .filter((line) => line !== "")
+              .join("\n");
+          }
+
+          // 判断是否是最后一块数据
+          const isLastChunk = rawData.includes(":disconnected");
+
+          // 调用 handleNodeChunk
+          handleNodeChunk(showData, isLastChunk);
+        }
+
+        if (typeof rawData === "string" && rawData.includes("ERROR") && rawData.includes("data:")) {
+          // 提取 data 字段的内容
+          const dataMatch = rawData.match(/data:([\s\S]*?)(?=\nevent:|$)/);
+          let data = dataMatch?.[1]?.trim();
+          if (data && data.length > 0 && data !== "data:") {
+            handleDataChunk({ data });
+          }
+        }
+      } else {
+        if (
+          typeof rawData === "string" &&
+          rawData.includes("event:") &&
+          rawData.includes("data:")
+        ) {
+          // 提取 event 类型
+          const eventMatch = rawData.match(/event:(\w+)/);
+          const event = eventMatch?.[1];
+          const dataMatch = rawData.match(/data:([\s\S]*?)(?=\nevent:|$)/);
+          let data = dataMatch?.[1]?.trim();
+
+          // 清理 data 中可能包含的多余 data: 前缀（当有多行 data: 时）
+          if (data) {
+            data = data
+              .split("\ndata:")
+              .map((line) => line.trim())
+              .filter((line) => line !== "")
+              .join("\n");
+          }
+
+          // 只有当 data 不为空且不是格式错误的 'data:' 字符串时才处理
+
+          if (event === "message" && data && data.length > 0 && data !== "data:") {
+            handleDataChunk({ data });
+          }
+        }
+      }
     }
-  }
-  catch (err) {
+  } catch (err) {
     handleError(err);
-  }
-  finally {
+  } finally {
     // 停止打字器状态
     if (bubbleItems.value.length) {
       const lastMessage = bubbleItems.value[bubbleItems.value.length - 1];
@@ -408,162 +777,14 @@ async function startSSE(chatContent: string) {
       // 无条件重置 loading（停止打字动画）
       lastMessage.loading = false;
       // 重置思考状态：如果还在思考中，标记为已完成
-      if (lastMessage.thinkingStatus === 'thinking') {
-        lastMessage.thinkingStatus = 'end';
+      if (lastMessage.thinkingStatus === "thinking") {
+        lastMessage.thinkingStatus = "end";
       }
       // 重置isThinking标志
       isThinking = false;
     }
+    userFileList.value = [];
   }
-}
-
-// 封装数据处理逻辑
-function handleDataChunk(chunk: AnyObject | string): boolean {
-  // 调试：打印收到的数据
-  console.log('[SSE] 收到 chunk:', chunk, 'type:', typeof chunk);
-
-  try {
-    // 处理字符串格式的 SSE 数据
-    let dataObj: AnyObject | null = null;
-    let eventType = '';
-
-    if (typeof chunk === 'string') {
-      // 忽略连接状态事件（格式为 :connected 或 :disconnected）
-      if (chunk === ':connected' || chunk === ':disconnected') {
-        console.log('[SSE] 连接状态:', chunk);
-        return false;
-      }
-
-      // 解析 SSE 格式: event:xxx\ndata:{...}
-      const lines = chunk.split('\n');
-      for (const line of lines) {
-        if (line.startsWith('event:')) {
-          eventType = line.substring(6).trim();
-        }
-        else if (line.startsWith('data:')) {
-          const jsonStr = line.substring(5).trim();
-          try {
-            dataObj = JSON.parse(jsonStr);
-          }
-          catch {
-            console.warn('[SSE] JSON 解析失败:', jsonStr);
-          }
-        }
-      }
-
-      // 处理完成事件
-      if (eventType === 'done' || dataObj?.done === true) {
-        console.log('[SSE] 流结束');
-        return true; // 返回 true 表示结束
-      }
-
-      // 使用解析后的数据对象
-      if (dataObj && eventType === 'content') {
-        const content = dataObj.content || '';
-        if (content) {
-          handleContentChunk(content);
-        }
-        // 处理推理内容
-        const reasoningContent = dataObj.reasoning_content || '';
-        if (reasoningContent) {
-          const lastMessage = bubbleItems.value[bubbleItems.value.length - 1];
-          if (lastMessage) {
-            lastMessage.thinkingStatus = 'thinking';
-            lastMessage.loading = true;
-            lastMessage.thinlCollapse = true;
-            lastMessage.reasoning_content += reasoningContent;
-            bubbleItems.value = [...bubbleItems.value];
-          }
-        }
-      }
-    }
-    else if (typeof chunk === 'object' && chunk !== null) {
-      // 处理对象格式（兼容 OpenAI 格式）
-      const reasoningChunk = chunk?.choices?.[0]?.delta?.reasoning_content;
-      if (reasoningChunk) {
-        const lastMessage = bubbleItems.value[bubbleItems.value.length - 1];
-        if (lastMessage) {
-          lastMessage.thinkingStatus = 'thinking';
-          lastMessage.loading = true;
-          lastMessage.thinlCollapse = true;
-          lastMessage.reasoning_content += reasoningChunk;
-          bubbleItems.value = [...bubbleItems.value];
-        }
-      }
-
-      const parsedChunk = chunk?.choices?.[0]?.delta?.content;
-      if (parsedChunk) {
-        handleContentChunk(parsedChunk);
-      }
-
-      // 处理直接的 content 字段
-      const directContent = chunk?.content;
-      if (directContent) {
-        handleContentChunk(directContent);
-      }
-    }
-  }
-  catch (err) {
-    console.error('解析数据时出错:', err);
-  }
-
-  return false;
-}
-
-/**
- * 处理内容片段
- */
-function handleContentChunk(content: string) {
-  const lastIndex = bubbleItems.value.length - 1;
-  const lastMessage = bubbleItems.value[lastIndex];
-  if (!lastMessage) {
-    return;
-  }
-
-  let currentText = content;
-
-  // 1. 处理 <think 标签之前的内容
-  if (!isThinking && currentText.includes('<think')) {
-    const thinkIdx = currentText.indexOf('<think');
-    if (thinkIdx > 0) {
-      const beforeThink = currentText.substring(0, thinkIdx);
-      lastMessage.content += beforeThink;
-    }
-    currentText = currentText.substring(thinkIdx + 7); // 移除 <think
-    isThinking = true;
-    lastMessage.thinkingStatus = 'thinking';
-    lastMessage.loading = true;
-    lastMessage.thinlCollapse = true;
-  }
-
-  // 2. 处理 </think 标签及之前的内容
-  if (isThinking && currentText.includes('</think')) {
-    const thinkEndIdx = currentText.indexOf('</think');
-    if (thinkEndIdx > 0) {
-      const thinkContent = currentText.substring(0, thinkEndIdx);
-      lastMessage.reasoning_content += thinkContent;
-    }
-    currentText = currentText.substring(thinkEndIdx + 8); // 移除 </think
-    isThinking = false;
-    lastMessage.thinkingStatus = 'end';
-    lastMessage.loading = false;
-  }
-
-  // 3. 处理剩余内容
-  if (currentText) {
-    if (isThinking) {
-      lastMessage.reasoning_content += currentText;
-    }
-    else {
-      lastMessage.content += currentText;
-    }
-  }
-
-  // 触发响应式更新
-  bubbleItems.value = [...bubbleItems.value];
-
-  // 滚动到底部实现流式效果
-  bubbleListRef.value?.scrollToBottom();
 }
 
 // 中断请求
@@ -579,16 +800,16 @@ function copyToClipboard(text: string, key: number) {
     .writeText(text)
     .then(() => {
       // 更新当前消息的图标为打钩
-      copyIconMap.value[key] = 'Check';
+      copyIconMap.value[key] = "Check";
 
       // 延迟恢复原始图标
       setTimeout(() => {
-        copyIconMap.value[key] = 'CopyDocument';
+        copyIconMap.value[key] = "CopyDocument";
       }, 2000);
     })
     .catch((err) => {
-      console.error('复制失败:', err);
-      ElMessage.error('复制失败，请手动复制');
+      console.error("复制失败:", err);
+      ElMessage.error("复制失败，请手动复制");
     });
 }
 
@@ -599,15 +820,15 @@ function addMessage(message: string, isUser: boolean) {
     key: i,
     avatar: isUser
       ? avatar.value
-      : 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png',
-    avatarSize: '32px',
-    role: isUser ? 'user' : 'system',
-    placement: isUser ? 'end' : 'start',
+      : "https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png",
+    avatarSize: "32px",
+    role: isUser ? "user" : "system",
+    placement: isUser ? "end" : "start",
     isMarkdown: !isUser,
     loading: !isUser,
-    content: message || '',
-    reasoning_content: '',
-    thinkingStatus: 'start',
+    content: message || "",
+    reasoning_content: "",
+    thinkingStatus: "start",
     thinlCollapse: false,
     noStyle: !isUser,
   };
@@ -625,21 +846,21 @@ function handleDeleteCard(_item: FilesCardProps, index: number) {
 function startEditing(item: MessageItem) {
   if (!editingMessageKeys.value.includes(item.key)) {
     editingMessageKeys.value.push(item.key); // 将消息 key 加入编辑列表
-    editedContents.value[item.key] = item.content || ''; // 初始化编辑内容
+    editedContents.value[item.key] = item.content; // 初始化编辑内容
   }
   // ⭐ 关键：关闭 Bubble 样式
   item.noStyle = true;
-  item.class = 'editing-bubble'; // ⭐ 新增
+  item.class = "editing-bubble"; // ⭐ 新增
 }
 
 // Cancel editing and revert to original content
 function cancelEditingByKey(key: number) {
-  const item = bubbleItems.value.find(i => i.key === key);
+  const item = bubbleItems.value.find((i) => i.key === key);
   if (item) {
     item.noStyle = false; // 恢复气泡
-    item.class = '';
+    item.class = "";
   }
-  editingMessageKeys.value = editingMessageKeys.value.filter(k => k !== key);
+  editingMessageKeys.value = editingMessageKeys.value.filter((k) => k !== key);
   delete editedContents.value[key];
 }
 
@@ -675,8 +896,11 @@ watch(
       nextTick(() => {
         senderRef.value?.openHeader();
       });
-    }
-    else {
+      isUploadFile.value = true;
+    } else {
+      console.log("filesList.length", val);
+      isUploadFile.value = false;
+      fileRunner.value = {};
       nextTick(() => {
         senderRef.value?.closeHeader();
       });
@@ -773,9 +997,7 @@ watch(
                     class="edit-input"
                   />
                   <div class="edit-actions">
-                    <el-button size="small" @click="cancelEditingByKey(item.key)">
-                      取消
-                    </el-button>
+                    <el-button size="small" @click="cancelEditingByKey(item.key)"> 取消 </el-button>
                     <el-button type="primary" size="small" @click="sendMessageByKey(item.key)">
                       发送
                     </el-button>
@@ -864,7 +1086,7 @@ watch(
               <ModelSelect />
 
               <!-- 知识库选择下拉菜单 -->
-              <el-popover
+              <!-- <el-popover
                 ref="knowledgePopoverRef"
                 placement="top-start"
                 :width="280"
@@ -877,9 +1099,7 @@ watch(
                   <div class="knowledge-list-container">
                     <div class="knowledge-list-header">
                       <span>选择知识库</span>
-                      <button class="clear-btn" @click="clearKnowledgeSelection">
-                        取消选择
-                      </button>
+                      <button class="clear-btn" @click="clearKnowledgeSelection">取消选择</button>
                     </div>
                     <div class="knowledge-list">
                       <div
@@ -910,7 +1130,7 @@ watch(
                     <span class="knowledge-text">{{ selectedKnowledgeName }}</span>
                   </div>
                 </template>
-              </el-popover>
+              </el-popover> -->
 
               <!-- 推理和联网按钮 -->
               <div class="feature-buttons">
@@ -989,17 +1209,15 @@ watch(
                           v-for="item in workflowList"
                           :key="item.id"
                           class="knowledge-item"
-                          :class="{ 'is-selected': selectedWorkflowName === item.title }"
                           @click="chooseWorkflowItem(item)"
+                          :class="{ 'is-selected': selectedWorkflowName === item.title }"
                         >
                           <div class="item-name">
                             {{ item.title }}
                           </div>
                         </div>
                         <!-- 加载提示 -->
-                        <div v-if="isWorkflowLoading" class="loading-tip">
-                          加载中...
-                        </div>
+                        <div v-if="isWorkflowLoading" class="loading-tip">加载中...</div>
                       </div>
                     </div>
                   </template>

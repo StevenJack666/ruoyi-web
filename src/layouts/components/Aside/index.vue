@@ -1,13 +1,13 @@
 <!-- Aside 侧边栏 -->
 <script setup lang="ts">
-import type { ConversationItem } from 'vue-element-plus-x/types/Conversations';
-import type { ChatSessionVo } from '@/api/session/types';
-import { useRoute, useRouter } from 'vue-router';
-import { get_session } from '@/api';
-import logo from '@/assets/images/logo.png';
-import Collapse from '@/layouts/components/Header/components/Collapse.vue';
-import { useDesignStore } from '@/stores';
-import { useSessionStore } from '@/stores/modules/session';
+import type { ConversationItem } from "vue-element-plus-x/types/Conversations";
+import type { ChatSessionVo } from "@/api/session/types";
+import { useRoute, useRouter } from "vue-router";
+import { get_session } from "@/api";
+import logo from "@/assets/images/logo.png";
+import Collapse from "@/layouts/components/Header/components/Collapse.vue";
+import { useDesignStore } from "@/stores";
+import { useSessionStore } from "@/stores/modules/session";
 
 const route = useRoute();
 const router = useRouter();
@@ -22,37 +22,37 @@ const active = ref<string | undefined>();
 // 固定应用列表
 const appList = ref([
   {
-    id: 'ai-chat',
-    name: 'AI 对话',
-    icon: 'ChatLineRound',
-    route: '/chat',
+    id: "ai-chat",
+    name: "AI 对话",
+    icon: "ChatLineRound",
+    route: "/chat",
   },
-  {
-    id: 'ai-image',
-    name: 'AI 画图',
-    icon: 'Picture',
-    route: '/ai-image',
-  },
-  {
-    id: 'ai-video',
-    name: 'AI 视频',
-    icon: 'VideoCamera',
-    route: '/ai-video',
-  },
-  {
-    id: 'ai-ppt',
-    name: 'AI PPT',
-    icon: 'Document',
-    route: '/ai-ppt',
-  },
+  // {
+  //   id: 'ai-image',
+  //   name: 'AI 画图',
+  //   icon: 'Picture',
+  //   route: '/ai-image',
+  // },
+  // {
+  //   id: 'ai-video',
+  //   name: 'AI 视频',
+  //   icon: 'VideoCamera',
+  //   route: '/ai-video',
+  // },
+  // {
+  //   id: 'ai-ppt',
+  //   name: 'AI PPT',
+  //   icon: 'Document',
+  //   route: '/ai-ppt',
+  // },
 ]);
 
-const activeApp = ref('ai-chat');
-const searchKeyword = ref('');
-const activeFooterBtn = ref<'agent' | 'knowledge' | null>(null);
+const activeApp = ref("ai-chat");
+const searchKeyword = ref("");
+const activeFooterBtn = ref<"agent" | "knowledge" | null>(null);
 
 // 切换应用
-function handleAppClick(app: typeof appList.value[0]) {
+function handleAppClick(app: (typeof appList.value)[0]) {
   activeApp.value = app.id;
   // 这里可以添加路由跳转逻辑
   // router.push(app.route);
@@ -60,31 +60,34 @@ function handleAppClick(app: typeof appList.value[0]) {
 
 // 智能体中心
 function handleAgentCenter() {
-  activeFooterBtn.value = activeFooterBtn.value === 'agent' ? null : 'agent';
-  console.log('打开智能体中心');
+  activeFooterBtn.value = activeFooterBtn.value === "agent" ? null : "agent";
+  console.log("打开智能体中心");
   // router.push('/agent-center');
 }
 
 // 知识库管理
 function handleKnowledgeBase() {
-  activeFooterBtn.value = activeFooterBtn.value === 'knowledge' ? null : 'knowledge';
-  console.log('打开知识库管理');
+  activeFooterBtn.value = activeFooterBtn.value === "knowledge" ? null : "knowledge";
+  console.log("打开知识库管理");
   // router.push('/knowledge-base');
 }
 
 onMounted(async () => {
   // 默认选中 AI 对话应用
-  activeApp.value = 'ai-chat';
+  activeApp.value = "ai-chat";
 
   // 获取会话列表
-  console.log('[Aside.onMounted] 开始获取会话列表');
+  console.log("[Aside.onMounted] 开始获取会话列表");
   await sessionStore.requestSessionList();
-  console.log('[Aside.onMounted] 获取会话列表完成，conversationsList.length:', conversationsList.value.length);
-  console.log('[Aside.onMounted] conversationsList:', conversationsList.value);
+  console.log(
+    "[Aside.onMounted] 获取会话列表完成，conversationsList.length:",
+    conversationsList.value.length,
+  );
+  console.log("[Aside.onMounted] conversationsList:", conversationsList.value);
 
   // 高亮最新会话
   if (conversationsList.value.length > 0 && sessionId.value) {
-    console.log('[Aside.onMounted] 获取当前选中会话，sessionId:', sessionId.value);
+    console.log("[Aside.onMounted] 获取当前选中会话，sessionId:", sessionId.value);
     const currentSessionRes = await get_session(`${sessionId.value}`);
     // 通过 ID 查询详情，设置当前会话 (因为有分页)
     sessionStore.setCurrentSession(currentSessionRes.data);
@@ -108,7 +111,7 @@ function handleCreatChat() {
 function handleChange(item: ConversationItem<ChatSessionVo>) {
   sessionStore.setCurrentSession(item);
   router.replace({
-    name: 'chatWithId',
+    name: "chatWithId",
     params: {
       id: item.id,
     },
@@ -117,21 +120,20 @@ function handleChange(item: ConversationItem<ChatSessionVo>) {
 
 // 处理组件触发的加载更多事件
 async function handleLoadMore() {
-  if (!sessionStore.hasMore)
-    return; // 无更多数据时不加载
+  if (!sessionStore.hasMore) return; // 无更多数据时不加载
   await sessionStore.loadMoreSessions();
 }
 
 // 右键菜单
 function handleMenuCommand(command: string, item: ConversationItem<ChatSessionVo>) {
   switch (command) {
-    case 'delete':
-      ElMessageBox.confirm('删除后，聊天记录将不可恢复。', '确定删除对话？', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning',
-        confirmButtonClass: 'el-button--danger',
-        cancelButtonClass: 'el-button--info',
+    case "delete":
+      ElMessageBox.confirm("删除后，聊天记录将不可恢复。", "确定删除对话？", {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning",
+        confirmButtonClass: "el-button--danger",
+        cancelButtonClass: "el-button--info",
         roundButton: true,
         autofocus: false,
       })
@@ -151,13 +153,13 @@ function handleMenuCommand(command: string, item: ConversationItem<ChatSessionVo
           // 取消删除
         });
       break;
-    case 'rename':
-      ElMessageBox.prompt('', '编辑对话名称', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        inputErrorMessage: '请输入对话名称',
-        confirmButtonClass: 'el-button--primary',
-        cancelButtonClass: 'el-button--info',
+    case "rename":
+      ElMessageBox.prompt("", "编辑对话名称", {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        inputErrorMessage: "请输入对话名称",
+        confirmButtonClass: "el-button--primary",
+        cancelButtonClass: "el-button--info",
         roundButton: true,
         inputValue: item.sessionTitle, // 设置默认值
         autofocus: false,
@@ -176,8 +178,8 @@ function handleMenuCommand(command: string, item: ConversationItem<ChatSessionVo
           })
           .then(() => {
             ElMessage({
-              type: 'success',
-              message: '修改成功',
+              type: "success",
+              message: "修改成功",
             });
             nextTick(() => {
               // 如果是当前会话，则更新当前选中会话信息
@@ -218,7 +220,7 @@ function handleMenuCommand(command: string, item: ConversationItem<ChatSessionVo
 
       <div class="aside-body">
         <!-- 搜索框 -->
-        <div class="search-wrapper">
+        <!-- <div class="search-wrapper">
           <el-input
             v-model="searchKeyword"
             placeholder="搜索对话"
@@ -231,7 +233,7 @@ function handleMenuCommand(command: string, item: ConversationItem<ChatSessionVo
               </el-icon>
             </template>
           </el-input>
-        </div>
+        </div> -->
 
         <!-- 应用入口区域 -->
         <div class="app-list-wrapper">
@@ -295,14 +297,22 @@ function handleMenuCommand(command: string, item: ConversationItem<ChatSessionVo
 
       <!-- 底部悬浮按钮 -->
       <div class="aside-footer">
-        <div class="footer-btn" :class="{ active: activeFooterBtn === 'agent' }" @click="handleAgentCenter">
+        <div
+          class="footer-btn"
+          :class="{ active: activeFooterBtn === 'agent' }"
+          @click="handleAgentCenter"
+        >
           <el-icon class="footer-btn-icon">
             <Avatar />
           </el-icon>
           <span class="footer-btn-text">智能体中心</span>
         </div>
         <div class="footer-divider" />
-        <div class="footer-btn" :class="{ active: activeFooterBtn === 'knowledge' }" @click="handleKnowledgeBase">
+        <div
+          class="footer-btn"
+          :class="{ active: activeFooterBtn === 'knowledge' }"
+          @click="handleKnowledgeBase"
+        >
           <el-icon class="footer-btn-icon">
             <FolderOpened />
           </el-icon>
@@ -590,7 +600,9 @@ function handleMenuCommand(command: string, item: ConversationItem<ChatSessionVo
 
   // 向左偏移一个宽度
   transform: translateX(-100%);
-  transition: opacity 0.3s ease 0.3s, transform 0.3s ease 0.3s;
+  transition:
+    opacity 0.3s ease 0.3s,
+    transform 0.3s ease 0.3s;
 
   /* 新增：未激活悬停时覆盖延迟 */
   &.no-delay {
@@ -617,7 +629,9 @@ function handleMenuCommand(command: string, item: ConversationItem<ChatSessionVo
 
   // 过渡动画沿用原有设置
   transform: translateX(15px);
-  transition: opacity 0.3s ease 0s, transform 0.3s ease 0s;
+  transition:
+    opacity 0.3s ease 0s,
+    transform 0.3s ease 0s;
 
   // 会话列表高度-悬停样式
   .conversations-wrap {
