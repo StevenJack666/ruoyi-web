@@ -1,16 +1,28 @@
 <!-- 默认消息列表页 -->
 <script setup lang="ts">
-import { ref, watch, nextTick, onMounted } from "vue";
 import type { FilesCardProps } from "vue-element-plus-x/types/FilesCard";
+import { nextTick, onMounted, ref, watch } from "vue";
 import { Sender } from "vue-element-plus-x";
+import { getKnowledgeList, getWorkflowList, getAgentList } from "@/api/chat";
 import FilesSelect from "@/components/FilesSelect/index.vue";
 import ModelSelect from "@/components/ModelSelect/index.vue";
 import WelecomeText from "@/components/WelecomeText/index.vue";
 import { useUserStore } from "@/stores";
+import { useChatStore } from "@/stores/modules/chat";
 import { useFilesStore } from "@/stores/modules/files";
 import { useSessionStore } from "@/stores/modules/session";
-import { useChatStore } from "@/stores/modules/chat";
-import { getKnowledgeList, getWorkflowList, getAgentList } from "@/api/chat";
+
+const isAgentVisible = ref(false);
+const fileRunner = ref<AnyObject>({});
+
+const isAgentLoading = ref(false);
+// 是否还有更多数据
+const hasMoreAgent = ref(true);
+const agentParams = ref<AnyObject>({
+  pageSize: 10,
+  pageNum: 1,
+});
+const agentList = ref<any[]>([]);
 
 const userStore = useUserStore();
 const sessionStore = useSessionStore();
@@ -47,18 +59,13 @@ const isWorkflowLoading = ref(false);
 // 是否还有更多数据
 const hasMoreWorkflows = ref(true);
 
-const isAgentLoading = ref(false);
-// 是否还有更多数据
-const hasMoreAgent = ref(true);
-
-const agentParams = ref<AnyObject>({
-  pageSize: 10,
-  pageNum: 1,
-});
-const agentList = ref<any[]>([]);
-const isAgentVisible = ref(false);
+// 工作流相关状态
+const isWorkflowVisible = ref(false);
+const selectedWorkflowName = ref<string>("工作流");
+const workFlowRunner = ref<AnyObject>({});
 const selectedAgentName = ref<string>("推理");
 const agentMarketId = ref<string>("");
+
 function chooseWorkflowItem(item: any) {
   if (selectedWorkflowName.value === item.title) {
     selectedWorkflowName.value = "工作流";
@@ -70,9 +77,9 @@ function chooseWorkflowItem(item: any) {
   // isWorkflowVisible.value = true;
   // selectedWorkflowName.value = item.title;
   workFlowRunner.value.uuid = item.uuid;
-  let nodes = [...item.nodes];
-  let user_inputs = nodes[0].inputConfig.user_inputs[0];
-  let inputsObj = {
+  const nodes = [...item.nodes];
+  const user_inputs = nodes[0].inputConfig.user_inputs[0];
+  const inputsObj = {
     uuid: nodes[0].uuid,
     name: user_inputs.name,
     required: user_inputs.required,
@@ -127,6 +134,40 @@ function agentHandleScroll(event: Event) {
     loadAgentList(true); // 加载更多
   }
 }
+// 加载agent列表
+async function loadAgentList(isLoadMore = false) {
+  if (isAgentLoading.value || !hasMoreAgent.value) return; // 防止重复请求或无数据时继续加载
+  isAgentLoading.value = true;
+  try {
+    const response = await getAgentList(agentParams.value);
+    console.log("agent列表:", response);
+    if (response?.rows && Array.isArray(response.rows)) {
+      const newRecords = response.rows;
+
+      if (isLoadMore) {
+        // 追加数据
+        agentList.value = [...agentList.value, ...newRecords];
+      } else {
+        // 替换数据（首次加载）
+        agentList.value = newRecords;
+      }
+
+      // 更新分页参数
+      agentParams.value.pageNum += 1;
+
+      // 判断是否还有更多数据
+      hasMoreAgent.value = response.total > agentList.value.length;
+    } else {
+      // 如果返回数据为空或格式不正确，标记为无更多数据
+      hasMoreAgent.value = false;
+    }
+  } catch (error) {
+    console.error("Failed to load workflow list:", error);
+    hasMoreAgent.value = false; // 出错时也停止加载
+  } finally {
+    isAgentLoading.value = false;
+  }
+}
 // 加载工作流列表
 async function loadWorkflowList(isLoadMore = false) {
   if (isWorkflowLoading.value || !hasMoreWorkflows.value) return; // 防止重复请求或无数据时继续加载
@@ -162,40 +203,6 @@ async function loadWorkflowList(isLoadMore = false) {
   }
 }
 
-async function loadAgentList(isLoadMore = false) {
-  if (isAgentLoading.value || !hasMoreAgent.value) return; // 防止重复请求或无数据时继续加载
-  isAgentLoading.value = true;
-  try {
-    const response = await getAgentList(agentParams.value);
-    console.log("agent列表:", response);
-    if (response?.rows && Array.isArray(response.rows)) {
-      const newRecords = response.rows;
-
-      if (isLoadMore) {
-        // 追加数据
-        agentList.value = [...agentList.value, ...newRecords];
-      } else {
-        // 替换数据（首次加载）
-        agentList.value = newRecords;
-      }
-
-      // 更新分页参数
-      agentParams.value.pageNum += 1;
-
-      // 判断是否还有更多数据
-      hasMoreAgent.value = response.total > agentList.value.length;
-    } else {
-      // 如果返回数据为空或格式不正确，标记为无更多数据
-      hasMoreAgent.value = false;
-    }
-  } catch (error) {
-    console.error("Failed to load workflow list:", error);
-    hasMoreAgent.value = false; // 出错时也停止加载
-  } finally {
-    isAgentLoading.value = false;
-  }
-}
-
 // 加载知识库列表
 async function loadKnowledgeList() {
   try {
@@ -218,12 +225,7 @@ const knowledgePopoverRef = ref();
 const isKnowledgePopoverVisible = ref(false);
 const selectedKnowledgeId = ref<string>("");
 const selectedKnowledgeName = ref<string>("知识库");
-const isWorkflowVisible = ref(false);
-const selectedWorkflowName = ref<string>("工作流");
 
-const workFlowRunner = ref<AnyObject>({});
-const reSumeRunner = ref<AnyObject>({});
-const fileRunner = ref<AnyObject>({});
 // 插入知识库标签
 function insertKnowledgeTag(knowledgeId: string) {
   const knowledge = knowledgeList.value.find((k) => k.id === knowledgeId);
@@ -260,6 +262,7 @@ async function handleSend() {
   localStorage.setItem("isAgentVisible", JSON.stringify(isAgentVisible.value));
   localStorage.setItem("agentMarketId", agentMarketId.value);
   localStorage.setItem("selectedAgentName", selectedAgentName.value);
+
   senderValue.value = "";
   await sessionStore.createSessionList({
     userId: userStore.userInfo?.userId as number,
@@ -291,8 +294,6 @@ watch(
       nextTick(() => {
         senderRef.value?.openHeader();
       });
-
-      localStorage.setItem("isUploadFile", "true");
     } else {
       nextTick(() => {
         senderRef.value?.closeHeader();
@@ -336,7 +337,7 @@ onMounted(() => {
       allow-speech
       :select-list="selectTagsArr"
       @submit="handleSend"
-      @showSelectDialog="handleShowSelectDialog"
+      @show-select-dialog="handleShowSelectDialog"
     >
       <template #header>
         <div class="sender-header p-12px pt-6px pb-0px">
@@ -496,8 +497,8 @@ onMounted(() => {
                       v-for="item in workflowList"
                       :key="item.id"
                       class="knowledge-item"
-                      @click="chooseWorkflowItem(item)"
                       :class="{ 'is-selected': selectedWorkflowName === item.title }"
+                      @click="chooseWorkflowItem(item)"
                     >
                       <div class="item-name">
                         {{ item.title }}
