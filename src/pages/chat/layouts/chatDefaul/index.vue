@@ -332,8 +332,8 @@ onMounted(() => {
         minRows: 3,
       }"
       variant="updown"
-      clearable
-      allow-speech
+      :clearable="false"
+      :allow-speech="false"
       :select-list="selectTagsArr"
       @submit="handleSend"
       @showSelectDialog="handleShowSelectDialog"

@@ -18,7 +18,7 @@ import { useModelStore } from "@/stores/modules/model";
 import { useSessionStore } from "@/stores/modules/session";
 import { useUserStore } from "@/stores/modules/user";
 import { codeXRender } from "@/utils/markdownRenderers";
-import avatarIcon from '@/assets/images/avatar.webp';
+import avatarIcon from "@/assets/images/avatar.webp";
 
 type MessageItem = BubbleProps & {
   key: number;
@@ -48,7 +48,7 @@ const userFileList = ref([]);
 // 用户头像
 const avatar = computed(() => {
   const userInfo = userStore.userInfo;
-   return userInfo?.avatar || avatarIcon;
+  return userInfo?.avatar || avatarIcon;
   // return userInfo?.avatar || "https://avatars.githubusercontent.com/u/32251822?s=96&v=4";
 });
 
@@ -823,9 +823,7 @@ function addMessage(message: string, isUser: boolean) {
     // avatar: isUser
     //   ? avatar.value
     //   : "https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png",
-    avatar: isUser
-      ? ''
-      : "https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png",
+    avatar: isUser ? "" : "https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png",
     avatarSize: "32px",
     role: isUser ? "user" : "system",
     placement: isUser ? "end" : "start",
@@ -1046,8 +1044,8 @@ watch(
             minRows: 2,
           }"
           variant="updown"
-          clearable
-          allow-speech
+          :clearable="false"
+          :allow-speech="false"
           :loading="isLoading"
           @submit="startSSE"
           @cancel="cancelSSE"

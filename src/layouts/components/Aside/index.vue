@@ -297,7 +297,7 @@ function handleMenuCommand(command: string, item: ConversationItem<ChatSessionVo
 
       <!-- 底部悬浮按钮 -->
       <div class="aside-footer">
-        <div
+        <!-- <div
           class="footer-btn"
           :class="{ active: activeFooterBtn === 'agent' }"
           @click="handleAgentCenter"
@@ -317,7 +317,7 @@ function handleMenuCommand(command: string, item: ConversationItem<ChatSessionVo
             <FolderOpened />
           </el-icon>
           <span class="footer-btn-text">知识库管理</span>
-        </div>
+        </div> -->
       </div>
     </div>
   </div>

@@ -104,7 +104,7 @@ function handleUploadFiles() {
           trigger="hover"
           :hover-delay="100"
         >
-          <template #trigger>
+          <!-- <template #trigger>
             <div
               class="popover-content-item flex items-center gap-4px p-10px rounded-10px cursor-pointer font-size-14px hover:bg-[rgba(0,0,0,.04)]"
             >
@@ -115,7 +115,7 @@ function handleUploadFiles() {
                 <ArrowRight />
               </el-icon>
             </div>
-          </template>
+          </template> -->
 
           <div class="popover-content-box">
             <div
