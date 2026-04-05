@@ -235,6 +235,12 @@ function agentHandleScroll(event: Event) {
     loadAgentList(true); // 加载更多
   }
 }
+function loadAgentData() {
+  isAgentVisible.value = !isAgentVisible.value;
+  if (!isAgentVisible.value) {
+    selectedAgentName.value = "推理";
+  }
+}
 
 // 加载工作流列表
 async function loadWorkflowList(isLoadMore = false) {
@@ -1178,7 +1184,7 @@ watch(
                     <div
                       class="feature-btn"
                       :class="{ active: isAgentVisible }"
-                      @click="isAgentVisible = !isAgentVisible"
+                      @click="loadAgentData"
                     >
                       <el-icon class="feature-icon">
                         <SetUp />

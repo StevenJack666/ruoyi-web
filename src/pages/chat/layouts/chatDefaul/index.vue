@@ -311,6 +311,9 @@ function loadWorkflowData() {
 
 function loadAgentData() {
   isAgentVisible.value = !isAgentVisible.value;
+  if (!isAgentVisible.value) {
+    selectedAgentName.value = "推理";
+  }
   loadAgentList();
 }
 
