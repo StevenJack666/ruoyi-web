@@ -31,6 +31,10 @@ export const useSessionStore = defineStore('session', () => {
   const isLoading = ref(false); // 全局加载状态（初始加载/刷新）
   const isLoadingMore = ref(false); // 加载更多状态（区分初始加载）
 
+  // 搜索相关状态
+  const searchKeyword = ref(''); // 搜索关键词
+  const isSearching = ref(false); // 是否正在搜索
+
   // 创建新对话（按钮点击）
   const createSessionBtn = async () => {
     try {
@@ -45,7 +49,6 @@ export const useSessionStore = defineStore('session', () => {
 
   // 获取会话列表（核心分页方法）
   const requestSessionList = async (page: number = currentPage.value, force: boolean = false) => {
-
     // 如果没有token就直接清空
     if (!userStore.token) {
       sessionList.value = [];
@@ -72,6 +75,8 @@ export const useSessionStore = defineStore('session', () => {
         pageSize: pageSize.value,
         isAsc: 'desc',
         orderByColumn: 'createTime',
+        // 搜索关键词
+        sessionTitle: searchKeyword.value || undefined,
       };
 
       const resArr = await get_session_list(params);
@@ -99,13 +104,11 @@ export const useSessionStore = defineStore('session', () => {
         ];
       }
 
-
       // 判断是否还有更多数据（当前页数据量 < pageSize 则无更多）
       if (!force)
         hasMore.value = (res?.length || 0) === pageSize.value;
       if (!force)
         currentPage.value = page; // 仅非强制刷新时更新页码
-
     }
     catch (error) {
       console.error('[requestSessionList] 错误详情:', error);
@@ -159,6 +162,30 @@ export const useSessionStore = defineStore('session', () => {
   const loadMoreSessions = async () => {
     if (hasMore.value)
       await requestSessionList(currentPage.value + 1);
+  };
+
+  // 搜索会话
+  const searchSessions = async (keyword: string) => {
+    searchKeyword.value = keyword;
+    isSearching.value = !!keyword;
+    // 重置分页状态
+    currentPage.value = 1;
+    hasMore.value = true;
+    sessionList.value = [];
+    // 重新请求
+    await requestSessionList(1, true);
+  };
+
+  // 清除搜索
+  const clearSearch = async () => {
+    searchKeyword.value = '';
+    isSearching.value = false;
+    // 重置分页状态
+    currentPage.value = 1;
+    hasMore.value = true;
+    sessionList.value = [];
+    // 重新请求
+    await requestSessionList(1, true);
   };
 
   // 更新会话（供组件调用）
@@ -233,6 +260,9 @@ export const useSessionStore = defineStore('session', () => {
     hasMore,
     isLoading,
     isLoadingMore,
+    // 搜索状态
+    searchKeyword,
+    isSearching,
     // 列表方法
     createSessionBtn,
     createSessionList,
@@ -240,5 +270,8 @@ export const useSessionStore = defineStore('session', () => {
     loadMoreSessions,
     updateSession,
     deleteSessions,
+    // 搜索方法
+    searchSessions,
+    clearSearch,
   };
 });
