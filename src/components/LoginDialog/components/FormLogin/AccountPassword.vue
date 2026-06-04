@@ -6,12 +6,12 @@ import { reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { login } from '@/api';
 import { useUserStore } from '@/stores';
-import { useLoginFormStore } from '@/stores/modules/loginForm';
+// import { useLoginFormStore } from '@/stores/modules/loginForm';
 import { useSessionStore } from '@/stores/modules/session';
 
 const userStore = useUserStore();
 const sessionStore = useSessionStore();
-const loginFromStore = useLoginFormStore();
+// const loginFromStore = useLoginFormStore();
 
 const formRef = ref<FormInstance>();
 
@@ -89,7 +89,7 @@ async function handleSubmit() {
     </el-form>
 
     <!-- 注册登录 -->
-    <div class="form-tip font-size-12px flex items-center">
+    <!-- <div class="form-tip font-size-12px flex items-center">
       <span>没有账号？</span>
       <span
         class="c-[var(--el-color-primar,#409eff)] cursor-pointer"
@@ -97,7 +97,7 @@ async function handleSubmit() {
       >
         立即注册
       </span>
-    </div>
+    </div> -->
   </div>
 </template>
 

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, watch } from 'vue';
+import { ref, watch,computed } from 'vue';
 import logoPng from '@/assets/images/logo.png';
 import SvgIcon from '@/components/SvgIcon/index.vue';
 import { useUserStore } from '@/stores';
@@ -33,9 +33,9 @@ watch(
 );
 
 // 切换二维码登录
-function toggleLoginMode() {
-  isQrMode.value = !isQrMode.value;
-}
+// function toggleLoginMode() {
+//   isQrMode.value = !isQrMode.value;
+// }
 
 // 点击遮罩层关闭对话框（触发过渡动画）
 function handleMaskClick() {
@@ -68,10 +68,10 @@ function onAfterLeave() {
             </div>
           </div>
           <div class="right-section">
-            <div class="mode-toggle" @click.stop="toggleLoginMode">
+            <!-- <div class="mode-toggle" @click.stop="toggleLoginMode">
               <SvgIcon v-if="!isQrMode" name="erweimadenglu" />
               <SvgIcon v-else name="zhanghaodenglu" />
-            </div>
+            </div> -->
             <div class="content-wrapper">
               <div v-if="!isQrMode" class="form-box">
                 <!-- 表单容器，父组件可以自定定义表单插槽 -->
