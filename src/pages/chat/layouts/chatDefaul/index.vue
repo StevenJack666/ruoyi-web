@@ -12,9 +12,10 @@ const sessionStore = useSessionStore();
 const senderValue = ref('');
 const senderRef = ref<InstanceType<typeof ChatSender> | null>(null);
 
-async function handleSubmit(content: string) {
+async function handleSubmit(content: string,fileList: File[]) {
   localStorage.setItem('chatContent', content);
   localStorage.setItem('enableThinking', String(senderRef.value?.isReasoningEnabled || false));
+  localStorage.setItem('defaultFileList', JSON.stringify(fileList));
 
   senderValue.value = '';
   await sessionStore.createSessionList({

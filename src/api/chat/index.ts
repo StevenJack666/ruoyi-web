@@ -1,5 +1,5 @@
 import type { ChatMessageVo, GetChatListParams, SendDTO, workflowVo } from './types';
-import { get, post } from '@/utils/request';
+import { filePost, get, post } from '@/utils/request';
 
 // 发送消息
 export const send = (data: SendDTO) => post('/chat/send', data);
@@ -27,4 +27,14 @@ export function getWorkflowList(params: workflowVo) {
   const url = `/admin/workflow/search?${queryString}`;
   // 发送 POST 请求
   return post<workflowVo[]>(url, {}).json();
+}
+
+// 上传文件
+export function uploadFile(file: File, sessionId:string) {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('sessionId', sessionId);
+
+  console.log('formData-formData', formData)
+  return filePost('/chat/upload', formData).json();
 }

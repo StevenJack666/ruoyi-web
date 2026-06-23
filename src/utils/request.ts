@@ -17,7 +17,15 @@ export const request = hookFetch.create<BaseResponse, 'data' | 'rows'>({
   headers: {
     'Content-Type': 'application/json',
   },
-  plugins: [sseTextDecoderPlugin({ json: true, prefix: 'data:' })],
+  plugins: [ sseTextDecoderPlugin({ json: true, prefix: 'data:' })],
+});
+
+export const fileRequest = hookFetch.create<BaseResponse, 'data' | 'rows'>({
+  baseURL: import.meta.env.VITE_API_URL,
+  // headers: {
+  //   'Content-Type': 'application/json',
+  // },
+  plugins: [ sseTextDecoderPlugin({ json: true, prefix: 'data:' })],
 });
 
 function jwtPlugin(): HookFetchPlugin<BaseResponse> {
@@ -57,6 +65,7 @@ function jwtPlugin(): HookFetchPlugin<BaseResponse> {
 }
 
 request.use(jwtPlugin());
+fileRequest.use(jwtPlugin());
 
 export const post = request.post;
 
@@ -66,4 +75,6 @@ export const put = request.put;
 
 export const del = request.delete;
 
-export default request;
+export const filePost = fileRequest.post;
+
+// export default request;

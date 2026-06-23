@@ -16,7 +16,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:modelValue': [value: string];
-  'submit': [content: string];
+  'submit': [content: string, filesList: FilesCardProps[]];
   'cancel': [];
 }>();
 
@@ -78,7 +78,17 @@ function clearKnowledgeSelection() {
 }
 
 function handleSubmit() {
-  emit('submit', senderValue.value);
+    let filesList = [...filesStore.filesList];
+  if (filesList && filesList.length) {
+    filesList.map((item) => {
+      item.showDelIcon = false;
+      return item;
+    });
+  }
+  const userFileList = filesList;
+  emit('submit', senderValue.value, userFileList);
+  // 5. 清空 store 中的文件列表
+  filesStore.setFilesList([]);
 }
 
 function handleCancel() {

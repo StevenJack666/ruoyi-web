@@ -5,6 +5,9 @@ import { useFileDialog } from '@vueuse/core';
 import { ElMessage } from 'element-plus';
 import Popover from '@/components/Popover/index.vue';
 import { useFilesStore } from '@/stores/modules/files';
+import { uploadFile } from "@/api/chat";
+import { useRoute } from 'vue-router';
+const route = useRoute();
 
 type FilesList = FilesCardProps & {
   file: File;
@@ -31,13 +34,16 @@ const { reset, open, onChange } = useFileDialog({
   multiple: true, // 是否允许多选
 });
 
-onChange((files) => {
+onChange(async (files) => {
+  console.log('files-files', files);
   if (!files)
     return;
   console.log('files', files);
   const arr = [] as FilesList[];
   for (let i = 0; i < files!.length; i++) {
     const file = files![i];
+    // 调用上传接口
+    const ret = await uploadFile(file, route.params?.id);
     arr.push({
       uid: crypto.randomUUID(), // 不写 uid，文件列表展示不出来，elx 1.2.0 bug 待修复
       name: file.name,
@@ -48,6 +54,7 @@ onChange((files) => {
       imgPreview: true, // 显示图片预览
       imgVariant: 'square', // 图片预览的形状
       url: URL.createObjectURL(file), // 图片预览地址
+      fileInfo: ret.data?.uploadVos,
     });
   }
   filesStore.setFilesList([...filesStore.filesList, ...arr]);

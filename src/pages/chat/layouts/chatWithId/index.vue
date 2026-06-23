@@ -16,6 +16,7 @@ import { useSessionStore } from '@/stores/modules/session';
 import { useUserStore } from '@/stores/modules/user';
 import { codeXRender } from '@/utils/markdownRenderers';
 import ToolCallCard from './components/ToolCallCard.vue';
+import type { FilesCardProps } from "vue-element-plus-x/types/FilesCard";
 
 type MessageItem = BubbleProps & {
   key: number;
@@ -25,6 +26,7 @@ type MessageItem = BubbleProps & {
   thinlCollapse?: boolean;
   reasoning_content?: string;
   class?: string;
+  fileList?: FilesCardProps[]; // 新增字段
 };
 
 const route = useRoute();
@@ -43,6 +45,7 @@ const inputValue = ref('');
 const chatSenderRef = ref<InstanceType<typeof ChatSender> | null>(null);
 const bubbleItems = ref<MessageItem[]>([]);
 const bubbleListRef = ref<BubbleListInstance | null>(null);
+const defaultFileList = ref<FilesCardProps[]>([]); // 新增字段，用于存储默认文件列表
 
 // 独立的工具调用事件列表
 const toolCallEvents = ref<ToolCallInfo[]>([]);
@@ -76,6 +79,13 @@ onMounted(() => {
   if (enableThinking === 'true' && chatSenderRef.value) {
     chatSenderRef.value.isReasoningEnabled = true;
     localStorage.removeItem('enableThinking');
+  }
+
+  const defaultFileListStr = localStorage.getItem("defaultFileList");
+  if (defaultFileListStr) {
+    defaultFileList.value = JSON.parse(defaultFileListStr);
+    // 处理默认文件列表
+    localStorage.removeItem("defaultFileList");
   }
 });
 
@@ -132,7 +142,7 @@ function handleError(err: any) {
   console.error('Fetch error:', err);
 }
 
-async function startSSE(chatContent: string) {
+async function startSSE(chatContent: string,fileList:any[] = []) {
   try {
     // 清空上一次的工具调用事件
     toolCallEvents.value = [];
@@ -141,6 +151,12 @@ async function startSSE(chatContent: string) {
     // 添加用户输入的消息
     inputValue.value = '';
     addMessage(chatContent, true);
+    // 2. 获取刚添加的消息对象
+    const newUserMessage = bubbleItems.value[bubbleItems.value.length - 1];
+    // 3. 处理文件列表
+    // 4. 将文件列表绑定到消息对象上
+    newUserMessage.fileList = fileList.length ? fileList : defaultFileList.value;
+    console.log('newUserMessage.fileList', newUserMessage);
     addMessage('', false);
 
     // 这里有必要调用一下 BubbleList 组件的滚动到底部 手动触发 自动滚动
@@ -511,6 +527,37 @@ function handleCreateNewChat() {
             default-theme-mode="dark"
           />
           <div v-if="item.content && item.role === 'user'" class="userContent">
+              <div class="sender-header p-12px pt-6px pb-0px">
+              <Attachments
+                :items="item.fileList"
+                :hide-upload="true"
+                @delete-card="handleDeleteCard"
+              >
+                <template #prev-button="{ show, onScrollLeft }">
+                  <div
+                    v-if="show"
+                    class="prev-next-btn left-8px flex-center w-22px h-22px rounded-8px border-1px border-solid border-[rgba(0,0,0,0.08)] c-[rgba(0,0,0,.4)] hover:bg-#f3f4f6 bg-#fff font-size-10px"
+                    @click="onScrollLeft"
+                  >
+                    <el-icon>
+                      <ArrowLeftBold />
+                    </el-icon>
+                  </div>
+                </template>
+
+                <template #next-button="{ show, onScrollRight }">
+                  <div
+                    v-if="show"
+                    class="prev-next-btn right-8px flex-center w-22px h-22px rounded-8px border-1px border-solid border-[rgba(0,0,0,0.08)] c-[rgba(0,0,0,.4)] hover:bg-#f3f4f6 bg-#fff font-size-10px"
+                    @click="onScrollRight"
+                  >
+                    <el-icon>
+                      <ArrowRightBold />
+                    </el-icon>
+                  </div>
+                </template>
+              </Attachments>
+            </div>
             <div class="user-bubble" :class="{ editing: editingMessageKeys.includes(item.key) }">
               <template v-if="!editingMessageKeys.includes(item.key)">
                 <div class="user-content">
