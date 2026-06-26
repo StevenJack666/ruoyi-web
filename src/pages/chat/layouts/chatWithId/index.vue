@@ -1,26 +1,27 @@
 <!-- 每个回话对应的聊天内容 -->
 <script setup lang="ts">
-import type { AnyObject } from 'typescript-api-pro';
-import type { BubbleProps } from 'vue-element-plus-x/types/Bubble';
-import type { BubbleListInstance } from 'vue-element-plus-x/types/BubbleList';
-import type { ThinkingStatus } from 'vue-element-plus-x/types/Thinking';
-import type { ToolCallInfo } from './types';
-import { useHookFetch } from 'hook-fetch/vue';
-import { nextTick } from 'vue';
-import { useRoute } from 'vue-router';
-import { send } from '@/api';
-import ChatSender from '@/components/ChatSender/index.vue';
-import { useChatStore } from '@/stores/modules/chat';
-import { useModelStore } from '@/stores/modules/model';
-import { useSessionStore } from '@/stores/modules/session';
-import { useUserStore } from '@/stores/modules/user';
-import { codeXRender } from '@/utils/markdownRenderers';
-import ToolCallCard from './components/ToolCallCard.vue';
+import type { AnyObject } from "typescript-api-pro";
+import type { BubbleProps } from "vue-element-plus-x/types/Bubble";
+import type { BubbleListInstance } from "vue-element-plus-x/types/BubbleList";
+import type { ThinkingStatus } from "vue-element-plus-x/types/Thinking";
+import type { ToolCallInfo } from "./types";
+import { useHookFetch } from "hook-fetch/vue";
+import { nextTick } from "vue";
+import { useRoute } from "vue-router";
+import { send } from "@/api";
+import { useFilesStore } from "@/stores/modules/files";
+import ChatSender from "@/components/ChatSender/index.vue";
+import { useChatStore } from "@/stores/modules/chat";
+import { useModelStore } from "@/stores/modules/model";
+import { useSessionStore } from "@/stores/modules/session";
+import { useUserStore } from "@/stores/modules/user";
+import { codeXRender } from "@/utils/markdownRenderers";
+import ToolCallCard from "./components/ToolCallCard.vue";
 import type { FilesCardProps } from "vue-element-plus-x/types/FilesCard";
 
 type MessageItem = BubbleProps & {
   key: number;
-  role: 'ai' | 'user' | 'system';
+  role: "ai" | "user" | "system";
   avatar: string;
   thinkingStatus?: ThinkingStatus;
   thinlCollapse?: boolean;
@@ -34,14 +35,18 @@ const chatStore = useChatStore();
 const modelStore = useModelStore();
 const sessionStore = useSessionStore();
 const userStore = useUserStore();
+const filesStore = useFilesStore();
+const isUploadFile = ref(false);
+const ossIds = ref([]);
+const userFileList = ref([]);
 
 // 用户头像
 const avatar = computed(() => {
   const userInfo = userStore.userInfo;
-  return userInfo?.avatar || 'https://avatars.githubusercontent.com/u/32251822?s=96&v=4';
+  return userInfo?.avatar || "https://avatars.githubusercontent.com/u/32251822?s=96&v=4";
 });
 
-const inputValue = ref('');
+const inputValue = ref("");
 const chatSenderRef = ref<InstanceType<typeof ChatSender> | null>(null);
 const bubbleItems = ref<MessageItem[]>([]);
 const bubbleListRef = ref<BubbleListInstance | null>(null);
@@ -66,19 +71,19 @@ const {
 } = useHookFetch({
   request: send,
   onError: (err) => {
-    console.warn('测试错误拦截', err);
+    console.warn("测试错误拦截", err);
   },
 });
 
 // 从 localStorage 恢复推理状态
 onMounted(() => {
   bubbleItems.value.forEach((item) => {
-    copyIconMap.value[item.key] = 'CopyDocument';
+    copyIconMap.value[item.key] = "CopyDocument";
   });
-  const enableThinking = localStorage.getItem('enableThinking');
-  if (enableThinking === 'true' && chatSenderRef.value) {
+  const enableThinking = localStorage.getItem("enableThinking");
+  if (enableThinking === "true" && chatSenderRef.value) {
     chatSenderRef.value.isReasoningEnabled = true;
-    localStorage.removeItem('enableThinking');
+    localStorage.removeItem("enableThinking");
   }
 
   const defaultFileListStr = localStorage.getItem("defaultFileList");
@@ -100,7 +105,7 @@ watch(
       toolCallEvents.value = [];
       toolCallKeyCounter = 0;
 
-      if (_id_ !== 'not_login') {
+      if (_id_ !== "not_login") {
         // 判断的当前会话id是否有聊天记录，有缓存则直接赋值展示
         if (chatStore.chatMap[`${_id_}`] && chatStore.chatMap[`${_id_}`].length) {
           bubbleItems.value = chatStore.chatMap[`${_id_}`] as MessageItem[];
@@ -115,6 +120,60 @@ watch(
         await chatStore.requestChatList(`${_id_}`);
         // 请求聊天记录后，赋值回显，并滚动到底部
         bubbleItems.value = chatStore.chatMap[`${_id_}`] as MessageItem[];
+        // console.log("ddffffff", bubbleItems.value);
+
+        // 处理文件
+        bubbleItems.value.forEach((item) => {
+          if (item.fileList && item.fileList.length) {
+            item.fileList = item.fileList.map((val) => {
+              console.log("val-val", val);
+              return {
+                ...val,
+                // name: "费用报销单.pdf",
+                // fileSize: 95464,
+                // // fileType: "application/pdf",
+                // // // // ossUrl: "D:\\\\fileUpload\\1098a2df-451a-4b6f-b6f6-da537a9b6b50.pdf",
+                imgPreview: true,
+                imgVariant: "square",
+                maxWidth: "200px",
+                showDelIcon: true,
+                uid: Date.now().toString(36) + Math.random().toString(36).slice(2),
+                // uid: "a2c9fdd9-1b91-4cd3-a2ba-d3fb4c25b8f4",
+                // url: "blob:http://localhost:5173/bc21cd9c-ee03-40d4-af4e-a9fd90f3d02c",
+                // fileSize: '95464',
+                // imgPreview: true,
+                // imgVariant: "square",
+                // maxWidth: "200px",
+                // name: "费用报销单.pdf",
+                // showDelIcon: true,
+                // type: "application/pdf",
+                // uid: "a2c9fdd9-1b91-4cd3-a2ba-d3fb4c25b8f4",
+                // url: "blob:http://localhost:5173/bc21cd9c-ee03-40d4-af4e-a9fd90f3d02c",
+              };
+
+              console.log("ddffffff-ffff", item.fileList);
+
+              // item.fileList = fileList
+            });
+            // item.fileList = [
+            //   {
+            //     fileSize: 95464,
+            //     imgPreview: true,
+            //     imgVariant: "square",
+            //     maxWidth: "200px",
+            //     name: "费用报销单.pdf",
+            //     showDelIcon: true,
+            //     type: "application/pdf",
+            //     uid: Date.now().toString(36) + Math.random().toString(36).slice(2),
+            //     url: "blob:http://localhost:5173/bc21cd9c-ee03-40d4-af4e-a9fd90f3d02c",
+            //   },
+            // ];
+
+            console.log("ddffffff-ffff", bubbleItems.value);
+          } else {
+            item.fileList = [];
+          }
+        });
 
         // 滚动到底部
         setTimeout(() => {
@@ -123,14 +182,14 @@ watch(
       }
 
       // 如果本地有发送内容 ，则直接发送
-      const v = localStorage.getItem('chatContent');
+      const v = localStorage.getItem("chatContent");
       if (v) {
         // 发送消息
         setTimeout(() => {
           startSSE(v);
         }, 350);
 
-        localStorage.removeItem('chatContent');
+        localStorage.removeItem("chatContent");
       }
     }
   },
@@ -139,48 +198,76 @@ watch(
 
 // 封装错误处理逻辑
 function handleError(err: any) {
-  console.error('Fetch error:', err);
+  console.error("Fetch error:", err);
 }
 
-async function startSSE(chatContent: string,fileList:any[] = []) {
+async function startSSE(chatContent: string, fileList: any[] = []) {
   try {
+    let filesList = [...filesStore.filesList];
+    if (filesList && filesList.length) {
+      filesList.map((item) => {
+        item.showDelIcon = false;
+        return item;
+      });
+    }
+    userFileList.value = filesList;
     // 清空上一次的工具调用事件
     toolCallEvents.value = [];
     toolCallKeyCounter = 0;
 
     // 添加用户输入的消息
-    inputValue.value = '';
+    inputValue.value = "";
     addMessage(chatContent, true);
     // 2. 获取刚添加的消息对象
     const newUserMessage = bubbleItems.value[bubbleItems.value.length - 1];
     // 3. 处理文件列表
     // 4. 将文件列表绑定到消息对象上
-    newUserMessage.fileList = fileList.length ? fileList : defaultFileList.value;
-    console.log('newUserMessage.fileList', newUserMessage);
-    addMessage('', false);
+    const testfileList = [
+      {
+        fileSize: 95464,
+        imgPreview: true,
+        imgVariant: "square",
+        maxWidth: "200px",
+        name: "费用报销单.pdf",
+        showDelIcon: true,
+        type: "application/pdf",
+        uid: "a2c9fdd9-1b91-4cd3-a2ba-d3fb4c25b8f4",
+        url: "blob:http://localhost:5173/bc21cd9c-ee03-40d4-af4e-a9fd90f3d02c",
+      },
+    ];
+    newUserMessage.fileList = testfileList.length ? testfileList : defaultFileList.value;
+    console.log("newUserMessage.fileList", newUserMessage);
+    addMessage("", false);
 
     // 这里有必要调用一下 BubbleList 组件的滚动到底部 手动触发 自动滚动
     bubbleListRef.value?.scrollToBottom();
 
     // 获取最后一条用户消息（后端做了长期记忆缓存，只需发送最新的用户消息）
-    const lastUserMessage = bubbleItems.value.filter((item: any) => item.role === 'user').pop();
+    const lastUserMessage = bubbleItems.value.filter((item: any) => item.role === "user").pop();
 
     // 标记是否收到第一个有效数据 chunk（用于清除 loading 状态）
     let hasReceivedFirstContent = false;
 
     for await (const chunk of stream({
-      model: modelStore.currentModelInfo.modelName ?? '',
-      content: lastUserMessage?.content ?? '',
-      sessionId: route.params?.id !== 'not_login' ? String(route.params?.id) : undefined,
+      model: modelStore.currentModelInfo.modelName ?? "",
+      content: lastUserMessage?.content ?? "",
+      sessionId: route.params?.id !== "not_login" ? String(route.params?.id) : undefined,
       enableThinking: chatSenderRef.value?.isReasoningEnabled || false,
       knowledgeId: chatStore.knowledgeId || undefined,
+      isUploadFile: isUploadFile.value,
+      ossIds: ossIds.value,
     })) {
       // 处理数据块 - chunk.result 可能是字符串或对象
       // 返回 true 表示流结束
       const isStreamEnd = handleDataChunk(chunk.result as AnyObject | string);
 
       // 在收到第一个有效数据后清除 loading 状态（跳过连接状态事件）
-      if (!hasReceivedFirstContent && chunk.result !== ':connected' && chunk.result !== ':disconnected' && !isStreamEnd) {
+      if (
+        !hasReceivedFirstContent &&
+        chunk.result !== ":connected" &&
+        chunk.result !== ":disconnected" &&
+        !isStreamEnd
+      ) {
         const lastMessage = bubbleItems.value[bubbleItems.value.length - 1];
         if (lastMessage) {
           lastMessage.loading = false;
@@ -195,8 +282,7 @@ async function startSSE(chatContent: string,fileList:any[] = []) {
       // 等待 Vue 更新 DOM，实现真正的流式渲染
       await nextTick();
     }
-  }
-  catch (err) {
+  } catch (err) {
     handleError(err);
     // 出错时也要清除 loading 状态
     if (bubbleItems.value.length) {
@@ -204,8 +290,7 @@ async function startSSE(chatContent: string,fileList:any[] = []) {
       lastMessage.loading = false;
       bubbleItems.value = [...bubbleItems.value];
     }
-  }
-  finally {
+  } finally {
     // 停止打字器状态
     if (bubbleItems.value.length) {
       const lastMessage = bubbleItems.value[bubbleItems.value.length - 1];
@@ -213,8 +298,8 @@ async function startSSE(chatContent: string,fileList:any[] = []) {
       // 无条件重置 loading（停止打字动画）
       lastMessage.loading = false;
       // 重置思考状态：如果还在思考中，标记为已完成
-      if (lastMessage.thinkingStatus === 'thinking') {
-        lastMessage.thinkingStatus = 'end';
+      if (lastMessage.thinkingStatus === "thinking") {
+        lastMessage.thinkingStatus = "end";
       }
       // 重置isThinking标志
       isThinking = false;
@@ -225,54 +310,52 @@ async function startSSE(chatContent: string,fileList:any[] = []) {
 
 // 封装数据处理逻辑
 function handleDataChunk(chunk: AnyObject | string): boolean {
-  console.log('[SSE] 收到 chunk:', chunk, 'type:', typeof chunk);
+  console.log("[SSE] 收到 chunk:", chunk, "type:", typeof chunk);
 
   try {
     let dataObj: AnyObject | null = null;
-    let eventType = '';
+    let eventType = "";
 
-    if (typeof chunk === 'string') {
-      if (chunk === ':connected' || chunk === ':disconnected') {
-        console.log('[SSE] 连接状态:', chunk);
+    if (typeof chunk === "string") {
+      if (chunk === ":connected" || chunk === ":disconnected") {
+        console.log("[SSE] 连接状态:", chunk);
         return false;
       }
 
-      const lines = chunk.split('\n');
+      const lines = chunk.split("\n");
       for (const line of lines) {
-        if (line.startsWith('event:')) {
+        if (line.startsWith("event:")) {
           eventType = line.substring(6).trim();
-        }
-        else if (line.startsWith('data:')) {
+        } else if (line.startsWith("data:")) {
           const jsonStr = line.substring(5).trim();
           try {
             dataObj = JSON.parse(jsonStr);
-          }
-          catch {
-            console.warn('[SSE] JSON 解析失败:', jsonStr);
+          } catch {
+            console.warn("[SSE] JSON 解析失败:", jsonStr);
           }
         }
       }
 
-      if (eventType === 'done' || dataObj?.done === true) {
-        console.log('[SSE] 流结束');
+      if (eventType === "done" || dataObj?.done === true) {
+        console.log("[SSE] 流结束");
         return true;
       }
 
-      if (eventType === 'mcp' && dataObj) {
+      if (eventType === "mcp" && dataObj) {
         handleMcpEvent(dataObj);
         return false;
       }
 
-      if (dataObj && eventType === 'content') {
-        const content = dataObj.content || '';
+      if (dataObj && eventType === "content") {
+        const content = dataObj.content || "";
         if (content) {
           handleContentChunk(content);
         }
-        const reasoningContent = dataObj.reasoning_content || '';
+        const reasoningContent = dataObj.reasoning_content || "";
         if (reasoningContent) {
           const lastMessage = bubbleItems.value[bubbleItems.value.length - 1];
           if (lastMessage) {
-            lastMessage.thinkingStatus = 'thinking';
+            lastMessage.thinkingStatus = "thinking";
             lastMessage.loading = true;
             lastMessage.thinlCollapse = true;
             lastMessage.reasoning_content += reasoningContent;
@@ -280,13 +363,12 @@ function handleDataChunk(chunk: AnyObject | string): boolean {
           }
         }
       }
-    }
-    else if (typeof chunk === 'object' && chunk !== null) {
+    } else if (typeof chunk === "object" && chunk !== null) {
       const reasoningChunk = chunk?.choices?.[0]?.delta?.reasoning_content;
       if (reasoningChunk) {
         const lastMessage = bubbleItems.value[bubbleItems.value.length - 1];
         if (lastMessage) {
-          lastMessage.thinkingStatus = 'thinking';
+          lastMessage.thinkingStatus = "thinking";
           lastMessage.loading = true;
           lastMessage.thinlCollapse = true;
           lastMessage.reasoning_content += reasoningChunk;
@@ -304,39 +386,36 @@ function handleDataChunk(chunk: AnyObject | string): boolean {
         handleContentChunk(directContent);
       }
     }
-  }
-  catch (err) {
-    console.error('解析数据时出错:', err);
+  } catch (err) {
+    console.error("解析数据时出错:", err);
   }
 
   return false;
 }
 
 function handleMcpEvent(dataObj: AnyObject) {
-  console.log('[SSE] MCP 事件:', dataObj);
+  console.log("[SSE] MCP 事件:", dataObj);
 
   try {
-    const content = typeof dataObj.content === 'string'
-      ? JSON.parse(dataObj.content)
-      : dataObj.content;
+    const content =
+      typeof dataObj.content === "string" ? JSON.parse(dataObj.content) : dataObj.content;
 
-    const toolName = content.name || 'Unknown Tool';
-    const toolStatus = content.status || 'pending';
+    const toolName = content.name || "Unknown Tool";
+    const toolStatus = content.status || "pending";
     const toolResult = content.result || null;
 
-    if (toolStatus === 'pending') {
+    if (toolStatus === "pending") {
       const toolInfo: ToolCallInfo = {
         key: ++toolCallKeyCounter,
         name: toolName,
-        status: 'pending',
+        status: "pending",
         result: null,
         timestamp: Date.now(),
       };
       toolCallEvents.value = [...toolCallEvents.value, toolInfo];
-    }
-    else {
+    } else {
       const index = toolCallEvents.value.findIndex(
-        t => t.name === toolName && t.status === 'pending',
+        (t) => t.name === toolName && t.status === "pending",
       );
       if (index >= 0) {
         const updatedEvents = [...toolCallEvents.value];
@@ -347,8 +426,7 @@ function handleMcpEvent(dataObj: AnyObject) {
           timestamp: Date.now(),
         };
         toolCallEvents.value = updatedEvents;
-      }
-      else {
+      } else {
         const toolInfo: ToolCallInfo = {
           key: ++toolCallKeyCounter,
           name: toolName,
@@ -360,10 +438,9 @@ function handleMcpEvent(dataObj: AnyObject) {
       }
     }
 
-    console.log('[SSE] 工具调用列表:', toolCallEvents.value);
-  }
-  catch (err) {
-    console.error('[SSE] MCP 事件解析失败:', err);
+    console.log("[SSE] 工具调用列表:", toolCallEvents.value);
+  } catch (err) {
+    console.error("[SSE] MCP 事件解析失败:", err);
   }
 }
 
@@ -376,36 +453,35 @@ function handleContentChunk(content: string) {
 
   let currentText = content;
 
-  if (!isThinking && currentText.includes('<think')) {
-    const thinkIdx = currentText.indexOf('<think');
+  if (!isThinking && currentText.includes("<think")) {
+    const thinkIdx = currentText.indexOf("<think");
     if (thinkIdx > 0) {
       const beforeThink = currentText.substring(0, thinkIdx);
       lastMessage.content += beforeThink;
     }
     currentText = currentText.substring(thinkIdx + 7);
     isThinking = true;
-    lastMessage.thinkingStatus = 'thinking';
+    lastMessage.thinkingStatus = "thinking";
     lastMessage.loading = true;
     lastMessage.thinlCollapse = true;
   }
 
-  if (isThinking && currentText.includes('</think')) {
-    const thinkEndIdx = currentText.indexOf('</think');
+  if (isThinking && currentText.includes("</think")) {
+    const thinkEndIdx = currentText.indexOf("</think");
     if (thinkEndIdx > 0) {
       const thinkContent = currentText.substring(0, thinkEndIdx);
       lastMessage.reasoning_content += thinkContent;
     }
     currentText = currentText.substring(thinkEndIdx + 8);
     isThinking = false;
-    lastMessage.thinkingStatus = 'end';
+    lastMessage.thinkingStatus = "end";
     lastMessage.loading = false;
   }
 
   if (currentText) {
     if (isThinking) {
       lastMessage.reasoning_content += currentText;
-    }
-    else {
+    } else {
       lastMessage.content += currentText;
     }
   }
@@ -425,14 +501,14 @@ function copyToClipboard(text: string, key: number) {
   navigator.clipboard
     .writeText(text)
     .then(() => {
-      copyIconMap.value[key] = 'Check';
+      copyIconMap.value[key] = "Check";
       setTimeout(() => {
-        copyIconMap.value[key] = 'CopyDocument';
+        copyIconMap.value[key] = "CopyDocument";
       }, 2000);
     })
     .catch((err) => {
-      console.error('复制失败:', err);
-      ElMessage.error('复制失败，请手动复制');
+      console.error("复制失败:", err);
+      ElMessage.error("复制失败，请手动复制");
     });
 }
 
@@ -442,15 +518,15 @@ function addMessage(message: string, isUser: boolean) {
     key: i,
     avatar: isUser
       ? avatar.value
-      : 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png',
-    avatarSize: '32px',
-    role: isUser ? 'user' : 'system',
-    placement: isUser ? 'end' : 'start',
+      : "https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png",
+    avatarSize: "32px",
+    role: isUser ? "user" : "system",
+    placement: isUser ? "end" : "start",
     isMarkdown: !isUser,
     loading: !isUser,
-    content: message || '',
-    reasoning_content: '',
-    thinkingStatus: 'start',
+    content: message || "",
+    reasoning_content: "",
+    thinkingStatus: "start",
     thinlCollapse: false,
     noStyle: !isUser,
   };
@@ -462,19 +538,19 @@ function handleChange(_payload: { value: boolean; status: ThinkingStatus }) {}
 function startEditing(item: MessageItem) {
   if (!editingMessageKeys.value.includes(item.key)) {
     editingMessageKeys.value.push(item.key);
-    editedContents.value[item.key] = item.content || '';
+    editedContents.value[item.key] = item.content || "";
   }
   item.noStyle = true;
-  item.class = 'editing-bubble';
+  item.class = "editing-bubble";
 }
 
 function cancelEditingByKey(key: number) {
-  const item = bubbleItems.value.find(i => i.key === key);
+  const item = bubbleItems.value.find((i) => i.key === key);
   if (item) {
     item.noStyle = false;
-    item.class = '';
+    item.class = "";
   }
-  editingMessageKeys.value = editingMessageKeys.value.filter(k => k !== key);
+  editingMessageKeys.value = editingMessageKeys.value.filter((k) => k !== key);
   delete editedContents.value[key];
 }
 
@@ -489,6 +565,28 @@ function sendMessageByKey(key: number) {
 function handleCreateNewChat() {
   sessionStore.createSessionBtn();
 }
+
+watch(
+  () => filesStore.filesList.length,
+  (val) => {
+    if (val > 0) {
+      console.log("filesList.length", filesStore.filesList);
+      let ossIdsData = [];
+      let filesList = filesStore.filesList;
+      filesList.forEach((val) => {
+        if (val.fileId) {
+          ossIdsData.push(val.fileId);
+        }
+      });
+      ossIds.value = ossIdsData;
+      isUploadFile.value = true;
+    } else {
+      console.log("filesList.length", val);
+      isUploadFile.value = false;
+      ossIds.value = [];
+    }
+  },
+);
 </script>
 
 <template>
@@ -497,11 +595,7 @@ function handleCreateNewChat() {
       <!-- 工具调用事件区域 -->
       <Transition name="tool-events-fade">
         <div v-if="hasToolCallEvents" class="tool-events-wrapper">
-          <ToolCallCard
-            v-for="tool in toolCallEvents"
-            :key="tool.key"
-            :tool-info="tool"
-          />
+          <ToolCallCard v-for="tool in toolCallEvents" :key="tool.key" :tool-info="tool" />
         </div>
       </Transition>
 
@@ -527,7 +621,7 @@ function handleCreateNewChat() {
             default-theme-mode="dark"
           />
           <div v-if="item.content && item.role === 'user'" class="userContent">
-              <div class="sender-header p-12px pt-6px pb-0px">
+            <div class="sender-header p-12px pt-6px pb-0px">
               <Attachments
                 :items="item.fileList"
                 :hide-upload="true"
@@ -574,9 +668,7 @@ function handleCreateNewChat() {
                     class="edit-input"
                   />
                   <div class="edit-actions">
-                    <el-button size="small" @click="cancelEditingByKey(item.key)">
-                      取消
-                    </el-button>
+                    <el-button size="small" @click="cancelEditingByKey(item.key)"> 取消 </el-button>
                     <el-button type="primary" size="small" @click="sendMessageByKey(item.key)">
                       发送
                     </el-button>
