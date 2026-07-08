@@ -37,8 +37,8 @@ const sessionStore = useSessionStore();
 const userStore = useUserStore();
 const filesStore = useFilesStore();
 const isUploadFile = ref(false);
-const ossIds = ref([]);
-const userFileList = ref([]);
+const ossIds = ref<any[]>([]);
+const userFileList = ref<any[]>([]);
 
 // 用户头像
 const avatar = computed(() => {
@@ -77,20 +77,22 @@ const {
 
 // 从 localStorage 恢复推理状态
 onMounted(() => {
+  const defaultFileListStr = localStorage.getItem("defaultFileList");
+  console.log("onMounted-defaultFileListStr", defaultFileListStr);
+  if (defaultFileListStr) {
+    defaultFileList.value = JSON.parse(defaultFileListStr);
+    // 处理默认文件列表
+    console.log("onMounted-defaultFileList", defaultFileList);
+    localStorage.removeItem("defaultFileList");
+  }
   bubbleItems.value.forEach((item) => {
     copyIconMap.value[item.key] = "CopyDocument";
+    item.fileList = defaultFileList.value; // 将默认文件列表绑定到每条消息
   });
   const enableThinking = localStorage.getItem("enableThinking");
   if (enableThinking === "true" && chatSenderRef.value) {
     chatSenderRef.value.isReasoningEnabled = true;
     localStorage.removeItem("enableThinking");
-  }
-
-  const defaultFileListStr = localStorage.getItem("defaultFileList");
-  if (defaultFileListStr) {
-    defaultFileList.value = JSON.parse(defaultFileListStr);
-    // 处理默认文件列表
-    localStorage.removeItem("defaultFileList");
   }
 });
 
@@ -125,7 +127,7 @@ watch(
         // 处理文件
         bubbleItems.value.forEach((item) => {
           if (item.fileList && item.fileList.length) {
-            item.fileList = item.fileList.map((val) => {
+            item.fileList = item.fileList.map((val: any) => {
               console.log("val-val", val);
               return {
                 ...val,
@@ -201,16 +203,20 @@ function handleError(err: any) {
   console.error("Fetch error:", err);
 }
 
+function handleDeleteCard(_item: FilesCardProps, index: number) {
+  filesStore.deleteFileByIndex(index);
+}
+
 async function startSSE(chatContent: string, fileList: any[] = []) {
   try {
     let filesList = [...filesStore.filesList];
     if (filesList && filesList.length) {
-      filesList.map((item) => {
+      filesList.map((item: any) => {
         item.showDelIcon = false;
         return item;
       });
     }
-    userFileList.value = filesList;
+    userFileList.value = fileList;
     // 清空上一次的工具调用事件
     toolCallEvents.value = [];
     toolCallKeyCounter = 0;
@@ -222,20 +228,23 @@ async function startSSE(chatContent: string, fileList: any[] = []) {
     const newUserMessage = bubbleItems.value[bubbleItems.value.length - 1];
     // 3. 处理文件列表
     // 4. 将文件列表绑定到消息对象上
-    const testfileList = [
-      {
-        fileSize: 95464,
-        imgPreview: true,
-        imgVariant: "square",
-        maxWidth: "200px",
-        name: "费用报销单.pdf",
-        showDelIcon: true,
-        type: "application/pdf",
-        uid: "a2c9fdd9-1b91-4cd3-a2ba-d3fb4c25b8f4",
-        url: "blob:http://localhost:5173/bc21cd9c-ee03-40d4-af4e-a9fd90f3d02c",
-      },
-    ];
-    newUserMessage.fileList = testfileList.length ? testfileList : defaultFileList.value;
+    // const testfileList = [
+    //   {
+    //     fileSize: 95464,
+    //     imgPreview: true,
+    //     imgVariant: "square",
+    //     maxWidth: "200px",
+    //     name: "费用报销单.pdf",
+    //     showDelIcon: true,
+    //     type: "application/pdf",
+    //     uid: "a2c9fdd9-1b91-4cd3-a2ba-d3fb4c25b8f4",
+    //     url: "blob:http://localhost:5173/bc21cd9c-ee03-40d4-af4e-a9fd90f3d02c",
+    //   },
+    // ];
+    console.log("newUserMessage.defaultFileList", defaultFileList.value,fileList);
+    newUserMessage.fileList = (
+      defaultFileList.value.length ? defaultFileList.value : fileList
+    ) as any[];
     console.log("newUserMessage.fileList", newUserMessage);
     addMessage("", false);
 
@@ -247,7 +256,6 @@ async function startSSE(chatContent: string, fileList: any[] = []) {
 
     // 标记是否收到第一个有效数据 chunk（用于清除 loading 状态）
     let hasReceivedFirstContent = false;
-
     for await (const chunk of stream({
       model: modelStore.currentModelInfo.modelName ?? "",
       content: lastUserMessage?.content ?? "",
@@ -304,7 +312,9 @@ async function startSSE(chatContent: string, fileList: any[] = []) {
       // 重置isThinking标志
       isThinking = false;
       bubbleItems.value = [...bubbleItems.value];
+      defaultFileList.value = []
     }
+    
   }
 }
 
@@ -571,9 +581,9 @@ watch(
   (val) => {
     if (val > 0) {
       console.log("filesList.length", filesStore.filesList);
-      let ossIdsData = [];
+      let ossIdsData = [] as any[];
       let filesList = filesStore.filesList;
-      filesList.forEach((val) => {
+      filesList.forEach((val: any) => {
         if (val.fileId) {
           ossIdsData.push(val.fileId);
         }

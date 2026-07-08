@@ -5,6 +5,7 @@ import ChatSender from '@/components/ChatSender/index.vue';
 import WelecomeText from '@/components/WelecomeText/index.vue';
 import { useUserStore } from '@/stores';
 import { useSessionStore } from '@/stores/modules/session';
+import type { FilesCardProps } from "vue-element-plus-x/types/FilesCard";
 
 const userStore = useUserStore();
 const sessionStore = useSessionStore();
@@ -12,7 +13,7 @@ const sessionStore = useSessionStore();
 const senderValue = ref('');
 const senderRef = ref<InstanceType<typeof ChatSender> | null>(null);
 
-async function handleSubmit(content: string,fileList: File[]) {
+async function handleSubmit(content: string,fileList: FilesCardProps[]) {
   localStorage.setItem('chatContent', content);
   localStorage.setItem('enableThinking', String(senderRef.value?.isReasoningEnabled || false));
   localStorage.setItem('defaultFileList', JSON.stringify(fileList));

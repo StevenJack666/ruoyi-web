@@ -104,6 +104,8 @@ export interface SendDTO {
    * 是否支持联网
    */
   enableInternet?: boolean;
+  isUploadFile?: boolean;
+  ossIds?: any[];
 }
 
 /**

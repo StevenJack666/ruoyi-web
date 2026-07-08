@@ -30,7 +30,7 @@ export function getWorkflowList(params: workflowVo) {
 }
 
 // 上传文件
-export function uploadFile(file: File, sessionId: string) {
+export function uploadFile(file: File, sessionId: any) {
   const formData = new FormData();
   formData.append('file', file);
   formData.append('sessionId', sessionId);

@@ -56,7 +56,7 @@ onChange(async (files) => {
       imgVariant: "square", // 图片预览的形状
       url: URL.createObjectURL(file), // 图片预览地址
       fileId: ret.data,
-    });
+    } as unknown as FilesList);
     // await uploadFile(file, route.params?.id, JSON.stringify(arr[i]));
   }
   filesStore.setFilesList([...filesStore.filesList, ...arr]);

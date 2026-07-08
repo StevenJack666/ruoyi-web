@@ -1,13 +1,13 @@
 <!-- 公共聊天输入框组件 -->
 <script setup lang="ts">
-import type { FilesCardProps } from 'vue-element-plus-x/types/FilesCard';
-import { nextTick, ref, watch } from 'vue';
-import { Sender } from 'vue-element-plus-x';
-import { getKnowledgeList } from '@/api/chat';
-import FilesSelect from '@/components/FilesSelect/index.vue';
-import ModelSelect from '@/components/ModelSelect/index.vue';
-import { useChatStore } from '@/stores/modules/chat';
-import { useFilesStore } from '@/stores/modules/files';
+import type { FilesCardProps } from "vue-element-plus-x/types/FilesCard";
+import { nextTick, ref, watch } from "vue";
+import { Sender } from "vue-element-plus-x";
+import { getKnowledgeList } from "@/api/chat";
+import FilesSelect from "@/components/FilesSelect/index.vue";
+import ModelSelect from "@/components/ModelSelect/index.vue";
+import { useChatStore } from "@/stores/modules/chat";
+import { useFilesStore } from "@/stores/modules/files";
 
 const props = defineProps<{
   modelValue?: string;
@@ -15,17 +15,17 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  'update:modelValue': [value: string];
-  'submit': [content: string, filesList: FilesCardProps[]];
-  'cancel': [];
+  "update:modelValue": [value: string];
+  submit: [content: string, filesList: FilesCardProps[]];
+  cancel: [];
 }>();
 
 const chatStore = useChatStore();
 const filesStore = useFilesStore();
 
 const senderValue = computed({
-  get: () => props.modelValue || '',
-  set: val => emit('update:modelValue', val),
+  get: () => props.modelValue || "",
+  set: (val) => emit("update:modelValue", val),
 });
 
 const senderRef = ref<InstanceType<typeof Sender> | null>(null);
@@ -38,8 +38,8 @@ const knowledgeList = ref<any[]>([]);
 
 // 知识库弹窗状态
 const knowledgePopoverRef = ref();
-const selectedKnowledgeId = ref<string>('');
-const selectedKnowledgeName = ref<string>('知识库');
+const selectedKnowledgeId = ref<string>("");
+const selectedKnowledgeName = ref<string>("知识库");
 
 // 加载知识库列表
 async function loadKnowledgeList() {
@@ -49,18 +49,17 @@ async function loadKnowledgeList() {
       knowledgeList.value = response.rows.map((item: any) => ({
         id: item.id,
         name: item.name,
-        icon: 'Document',
+        icon: "Document",
       }));
     }
-  }
-  catch (error) {
-    console.error('Failed to load knowledge list:', error);
+  } catch (error) {
+    console.error("Failed to load knowledge list:", error);
   }
 }
 
 // 插入知识库标签
 function insertKnowledgeTag(knowledgeId: string) {
-  const knowledge = knowledgeList.value.find(k => k.id === knowledgeId);
+  const knowledge = knowledgeList.value.find((k) => k.id === knowledgeId);
   if (knowledge) {
     selectedKnowledgeId.value = knowledgeId;
     selectedKnowledgeName.value = knowledge.name;
@@ -72,27 +71,31 @@ function insertKnowledgeTag(knowledgeId: string) {
 
 // 清除知识库选择
 function clearKnowledgeSelection() {
-  selectedKnowledgeId.value = '';
-  selectedKnowledgeName.value = '知识库';
-  chatStore.setKnowledgeId('');
+  selectedKnowledgeId.value = "";
+  selectedKnowledgeName.value = "知识库";
+  chatStore.setKnowledgeId("");
 }
 
 function handleSubmit() {
-    let filesList = [...filesStore.filesList];
+  let filesList = [...filesStore.filesList];
   if (filesList && filesList.length) {
     filesList.map((item) => {
-      item.showDelIcon = false;
-      return item;
+      return {
+        ...item,
+        showDelIcon: false,
+      };
+      // item.showDelIcon = false;
+      // return item;
     });
   }
   const userFileList = filesList;
-  emit('submit', senderValue.value, userFileList);
+  emit("submit", senderValue.value, userFileList as unknown as FilesCardProps[]);
   // 5. 清空 store 中的文件列表
   filesStore.setFilesList([]);
 }
 
 function handleCancel() {
-  emit('cancel');
+  emit("cancel");
 }
 
 function handleDeleteCard(_item: FilesCardProps, index: number) {
@@ -117,8 +120,7 @@ watch(
   (val) => {
     if (val > 0) {
       openHeader();
-    }
-    else {
+    } else {
       closeHeader();
     }
   },
@@ -129,15 +131,14 @@ watch(
   () => chatStore.knowledgeId,
   (id) => {
     if (id) {
-      const knowledge = knowledgeList.value.find(k => k.id === id);
+      const knowledge = knowledgeList.value.find((k) => k.id === id);
       if (knowledge) {
         selectedKnowledgeId.value = id;
         selectedKnowledgeName.value = knowledge.name;
       }
-    }
-    else {
-      selectedKnowledgeId.value = '';
-      selectedKnowledgeName.value = '知识库';
+    } else {
+      selectedKnowledgeId.value = "";
+      selectedKnowledgeName.value = "知识库";
     }
   },
 );
@@ -147,7 +148,7 @@ onMounted(() => {
   loadKnowledgeList();
   // 从 store 中同步知识库选择状态
   if (chatStore.knowledgeId) {
-    const knowledge = knowledgeList.value.find(k => k.id === chatStore.knowledgeId);
+    const knowledge = knowledgeList.value.find((k) => k.id === chatStore.knowledgeId);
     if (knowledge) {
       selectedKnowledgeId.value = chatStore.knowledgeId;
       selectedKnowledgeName.value = knowledge.name;
@@ -229,9 +230,7 @@ defineExpose({
               <div class="knowledge-list-container">
                 <div class="knowledge-list-header">
                   <span>选择知识库</span>
-                  <button class="clear-btn" @click="clearKnowledgeSelection">
-                    取消选择
-                  </button>
+                  <button class="clear-btn" @click="clearKnowledgeSelection">取消选择</button>
                 </div>
                 <div class="knowledge-list">
                   <div
