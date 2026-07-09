@@ -45,7 +45,7 @@ onChange(async (files) => {
     // 调用上传接口
     const ret = await uploadFile(file, route.params?.id);
     arr.push({
-      uid: crypto.randomUUID(), // 不写 uid，文件列表展示不出来，elx 1.2.0 bug 待修复
+      uid: new Date().getTime(), // 不写 uid，文件列表展示不出来，elx 1.2.0 bug 待修复
       name: file.name,
       fileSize: file.size,
       type: file.type,
