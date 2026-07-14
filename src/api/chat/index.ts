@@ -30,10 +30,13 @@ export function getWorkflowList(params: workflowVo) {
 }
 
 // 上传文件
-export function uploadFile(file: File, sessionId: any) {
+export function uploadFile(fileList: File[]) {
   const formData = new FormData();
-  formData.append('file', file);
-  formData.append('sessionId', sessionId);
+  fileList.forEach((file) => {
+    formData.append('fileList', file);
+  });
+  // formData.append('fileList', fileList);
+  // formData.append('sessionId', sessionId);
 
   console.log('formData-formData', formData)
   return filePost('/chat/upload', formData).json();

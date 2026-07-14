@@ -6,8 +6,6 @@ import { ElMessage } from "element-plus";
 import Popover from "@/components/Popover/index.vue";
 import { useFilesStore } from "@/stores/modules/files";
 import { uploadFile } from "@/api/chat";
-import { useRoute } from "vue-router";
-const route = useRoute();
 
 type FilesList = FilesCardProps & {
   file: File;
@@ -39,11 +37,15 @@ onChange(async (files) => {
   if (!files) return;
   console.log("files", files);
   const arr = [] as FilesList[];
+
   for (let i = 0; i < files!.length; i++) {
+    // const fileList = [] as FilesList[];
+    const fileList:File[] = []
     const file = files![i];
- 
+    fileList.push(files![i]);
+
     // 调用上传接口
-    const ret = await uploadFile(file, route.params?.id);
+    const ret = await uploadFile(fileList);
     arr.push({
       uid: new Date().getTime(), // 不写 uid，文件列表展示不出来，elx 1.2.0 bug 待修复
       name: file.name,
@@ -59,6 +61,8 @@ onChange(async (files) => {
     } as unknown as FilesList);
     // await uploadFile(file, route.params?.id, JSON.stringify(arr[i]));
   }
+
+  console.log("filesStore", filesStore.filesList, arr);
   filesStore.setFilesList([...filesStore.filesList, ...arr]);
 
   // console.log("filesStore.filesList-filesStore.filesList", filesStore.filesList);
