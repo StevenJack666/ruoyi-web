@@ -39,7 +39,7 @@ const filesStore = useFilesStore();
 const isUploadFile = ref(false);
 const ossIds = ref<any[]>([]);
 const userFileList = ref<any[]>([]);
-
+const defautFildIds = ref<any[]>([]);
 // 用户头像
 const avatar = computed(() => {
   const userInfo = userStore.userInfo;
@@ -102,27 +102,29 @@ let isThinking = false;
 watch(
   () => route.params?.id,
   async (_id_) => {
+   
     if (_id_) {
+       
       // 切换会话时清空工具调用事件
       toolCallEvents.value = [];
       toolCallKeyCounter = 0;
 
       if (_id_ !== "not_login") {
-        // 判断的当前会话id是否有聊天记录，有缓存则直接赋值展示
-        if (chatStore.chatMap[`${_id_}`] && chatStore.chatMap[`${_id_}`].length) {
-          bubbleItems.value = chatStore.chatMap[`${_id_}`] as MessageItem[];
-          // 滚动到底部
-          setTimeout(() => {
-            bubbleListRef.value?.scrollToBottom();
-          }, 350);
-          return;
-        }
-
+      
+        // // 判断的当前会话id是否有聊天记录，有缓存则直接赋值展示
+        // if (chatStore.chatMap[`${_id_}`] && chatStore.chatMap[`${_id_}`].length) {
+        //   bubbleItems.value = chatStore.chatMap[`${_id_}`] as MessageItem[];
+        //   // 滚动到底部
+        //   setTimeout(() => {
+        //     bubbleListRef.value?.scrollToBottom();
+        //   }, 350);
+        //   return;
+        // }
         // 无缓存则请求聊天记录
         await chatStore.requestChatList(`${_id_}`);
         // 请求聊天记录后，赋值回显，并滚动到底部
         bubbleItems.value = chatStore.chatMap[`${_id_}`] as MessageItem[];
-        // console.log("ddffffff", bubbleItems.value);
+        console.log("ddffffff", bubbleItems.value);
 
         // 处理文件
         bubbleItems.value.forEach((item) => {
@@ -185,6 +187,7 @@ watch(
 
       // 如果本地有发送内容 ，则直接发送
       const v = localStorage.getItem("chatContent");
+      defautFildIds.value = localStorage.getItem("defautFildIds")?.split(",") || [];
       if (v) {
         // 发送消息
         setTimeout(() => {
@@ -241,7 +244,7 @@ async function startSSE(chatContent: string, fileList: any[] = []) {
     //     url: "blob:http://localhost:5173/bc21cd9c-ee03-40d4-af4e-a9fd90f3d02c",
     //   },
     // ];
-    console.log("newUserMessage.defaultFileList", defaultFileList.value,fileList);
+    console.log("newUserMessage.defaultFileList", defaultFileList.value, fileList);
     newUserMessage.fileList = (
       defaultFileList.value.length ? defaultFileList.value : fileList
     ) as any[];
@@ -262,8 +265,8 @@ async function startSSE(chatContent: string, fileList: any[] = []) {
       sessionId: route.params?.id !== "not_login" ? String(route.params?.id) : undefined,
       enableThinking: chatSenderRef.value?.isReasoningEnabled || false,
       knowledgeId: chatStore.knowledgeId || undefined,
-      isUploadFile: isUploadFile.value,
-      ossIds: ossIds.value,
+      isUploadFile: defautFildIds.value.length ? true : isUploadFile.value,
+      ossIds: defautFildIds.value.length ? defautFildIds.value : ossIds.value,
     })) {
       // 处理数据块 - chunk.result 可能是字符串或对象
       // 返回 true 表示流结束
@@ -312,9 +315,9 @@ async function startSSE(chatContent: string, fileList: any[] = []) {
       // 重置isThinking标志
       isThinking = false;
       bubbleItems.value = [...bubbleItems.value];
-      defaultFileList.value = []
+      defaultFileList.value = [];
+      defautFildIds.value = []
     }
-    
   }
 }
 

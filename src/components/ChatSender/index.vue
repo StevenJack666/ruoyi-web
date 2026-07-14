@@ -37,7 +37,7 @@ const isReasoningEnabled = ref(false);
 const knowledgeList = ref<any[]>([]);
 
 // 知识库弹窗状态
-const knowledgePopoverRef = ref();
+// const knowledgePopoverRef = ref();
 const selectedKnowledgeId = ref<string>("");
 const selectedKnowledgeName = ref<string>("知识库");
 
@@ -58,23 +58,23 @@ async function loadKnowledgeList() {
 }
 
 // 插入知识库标签
-function insertKnowledgeTag(knowledgeId: string) {
-  const knowledge = knowledgeList.value.find((k) => k.id === knowledgeId);
-  if (knowledge) {
-    selectedKnowledgeId.value = knowledgeId;
-    selectedKnowledgeName.value = knowledge.name;
-    chatStore.setKnowledgeId(knowledgeId);
-    // 关闭弹窗
-    knowledgePopoverRef.value?.hide();
-  }
-}
+// function insertKnowledgeTag(knowledgeId: string) {
+//   const knowledge = knowledgeList.value.find((k) => k.id === knowledgeId);
+//   if (knowledge) {
+//     selectedKnowledgeId.value = knowledgeId;
+//     selectedKnowledgeName.value = knowledge.name;
+//     chatStore.setKnowledgeId(knowledgeId);
+//     // 关闭弹窗
+//     knowledgePopoverRef.value?.hide();
+//   }
+// }
 
 // 清除知识库选择
-function clearKnowledgeSelection() {
-  selectedKnowledgeId.value = "";
-  selectedKnowledgeName.value = "知识库";
-  chatStore.setKnowledgeId("");
-}
+// function clearKnowledgeSelection() {
+//   selectedKnowledgeId.value = "";
+//   selectedKnowledgeName.value = "知识库";
+//   chatStore.setKnowledgeId("");
+// }
 
 function handleSubmit() {
   let filesList = [...filesStore.filesList];
@@ -219,7 +219,7 @@ defineExpose({
           <ModelSelect />
 
           <!-- 知识库选择下拉菜单 -->
-          <el-popover
+          <!-- <el-popover
             ref="knowledgePopoverRef"
             placement="top-start"
             :width="280"
@@ -261,7 +261,7 @@ defineExpose({
                 <span class="action-text">{{ selectedKnowledgeName }}</span>
               </div>
             </template>
-          </el-popover>
+          </el-popover> -->
 
           <!-- 智能推理按钮 -->
           <div
