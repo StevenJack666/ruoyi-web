@@ -8,6 +8,7 @@ import FilesSelect from "@/components/FilesSelect/index.vue";
 import ModelSelect from "@/components/ModelSelect/index.vue";
 import { useChatStore } from "@/stores/modules/chat";
 import { useFilesStore } from "@/stores/modules/files";
+import AgentSelect from '@/components/AgentSelect/index.vue';
 
 const props = defineProps<{
   modelValue?: string;
@@ -216,7 +217,9 @@ defineExpose({
       <div class="sender-prefix-container">
         <!-- 左侧按钮组 -->
         <div class="left-buttons">
-          <ModelSelect />
+         <AgentSelect />
+        </div>
+          <!-- <ModelSelect /> -->
 
           <!-- 知识库选择下拉菜单 -->
           <!-- <el-popover
@@ -264,7 +267,7 @@ defineExpose({
           </el-popover> -->
 
           <!-- 智能推理按钮 -->
-          <div
+          <!-- <div
             class="action-btn"
             :class="{ active: isReasoningEnabled }"
             @click="isReasoningEnabled = !isReasoningEnabled"
@@ -274,7 +277,7 @@ defineExpose({
             </el-icon>
             <span class="action-text">智能推理</span>
           </div>
-        </div>
+        </div> -->
 
         <!-- 右侧上传按钮 -->
         <FilesSelect class="ml-auto" />

@@ -9,6 +9,7 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     AccountPassword: typeof import('./../src/components/LoginDialog/components/FormLogin/AccountPassword.vue')['default']
+    AgentSelect: typeof import('./../src/components/AgentSelect/index.vue')['default']
     ChatSender: typeof import('./../src/components/ChatSender/index.vue')['default']
     DeepThinking: typeof import('./../src/components/DeepThinking/index.vue')['default']
     EchartsRenderer: typeof import('./../src/components/EchartsRenderer/index.vue')['default']
@@ -25,7 +26,6 @@ declare module 'vue' {
     ElImage: typeof import('element-plus/es')['ElImage']
     ElInput: typeof import('element-plus/es')['ElInput']
     ElMain: typeof import('element-plus/es')['ElMain']
-    ElPopover: typeof import('element-plus/es')['ElPopover']
     ElTag: typeof import('element-plus/es')['ElTag']
     ElTooltip: typeof import('element-plus/es')['ElTooltip']
     FilesSelect: typeof import('./../src/components/FilesSelect/index.vue')['default']
