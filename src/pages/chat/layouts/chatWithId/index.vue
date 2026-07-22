@@ -18,6 +18,8 @@ import { useUserStore } from "@/stores/modules/user";
 import { codeXRender } from "@/utils/markdownRenderers";
 import ToolCallCard from "./components/ToolCallCard.vue";
 import type { FilesCardProps } from "vue-element-plus-x/types/FilesCard";
+import { useAgentStore } from '@/stores/modules/agent';
+const agentStore = useAgentStore();
 
 type MessageItem = BubbleProps & {
   key: number;
@@ -267,6 +269,7 @@ async function startSSE(chatContent: string, fileList: any[] = []) {
       knowledgeId: chatStore.knowledgeId || undefined,
       isUploadFile: defautFildIds.value.length ? true : isUploadFile.value,
       ossIds: defautFildIds.value.length ? defautFildIds.value : ossIds.value,
+      agentId: agentStore.currentAgentInfo?.id || undefined,
     })) {
       // 处理数据块 - chunk.result 可能是字符串或对象
       // 返回 true 表示流结束
