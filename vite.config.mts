@@ -26,6 +26,7 @@ export default defineConfig((cnf) => {
     },
     // 浏览器缓存问题
     server: {
+      host:'0.0.0.0',
       headers: {
         'Cache-Control': 'no-store',
       },

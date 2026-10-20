@@ -78,6 +78,13 @@ function handleCreatChat() {
   sessionStore.createSessionBtn();
 }
 
+// 从当前会话创建新对话
+function handleCreateNewChat() {
+  if (!sessionStore.currentSession)
+    return;
+  sessionStore.createSessionBtn();
+}
+
 // 切换会话
 function handleChange(item: ConversationItem<ChatSessionVo>) {
   sessionStore.setCurrentSession(item);
@@ -191,6 +198,17 @@ function handleMenuCommand(command: string, item: ConversationItem<ChatSessionVo
       </div>
 
       <div class="aside-body">
+        <button
+          type="button"
+          class="new-chat-btn"
+          :disabled="!sessionStore.currentSession"
+          @click="handleCreateNewChat"
+        >
+          <el-icon class="btn-icon">
+            <Plus />
+          </el-icon>
+          <span class="btn-text">新对话</span>
+        </button>
         <!-- 搜索框 -->
         <div class="search-wrapper">
           <el-input
@@ -301,6 +319,51 @@ function handleMenuCommand(command: string, item: ConversationItem<ChatSessionVo
 
     // 侧边栏内容样式
     .aside-body {
+      .new-chat-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: calc(100% - 24px);
+        height: 40px;
+        margin: 16px 12px 0;
+        color: #0057ff;
+        cursor: pointer;
+        user-select: none;
+        background-color: #fff;
+        border: 1px solid rgb(0 87 255 / 28%);
+        border-radius: 10px;
+        transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+
+        &:hover:not(:disabled) {
+          color: #fff;
+          background-color: #0057ff;
+          border-color: #0057ff;
+          box-shadow: 0 4px 10px rgb(0 87 255 / 18%);
+        }
+
+        &:focus-visible {
+          outline: 2px solid rgb(0 87 255 / 35%);
+          outline-offset: 2px;
+        }
+
+        &:disabled {
+          color: rgb(0 87 255 / 45%);
+          cursor: not-allowed;
+          background-color: rgb(0 0 0 / 2%);
+          border-color: rgb(0 87 255 / 14%);
+        }
+
+        .btn-icon {
+          font-size: 16px;
+        }
+
+        .btn-text {
+          margin-left: 6px;
+          font-size: 14px;
+          font-weight: 600;
+        }
+      }
+
       // 搜索框样式
       .search-wrapper {
         padding: 16px 12px 12px;
