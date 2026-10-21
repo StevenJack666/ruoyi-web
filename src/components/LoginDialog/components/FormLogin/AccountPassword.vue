@@ -1,13 +1,15 @@
 <!-- 账号密码登录表单 -->
 <script lang="ts" setup>
-import type { FormInstance, FormRules } from 'element-plus';
-import type { LoginDTO } from '@/api/auth/types';
-import { reactive, ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { login } from '@/api';
-import { useUserStore } from '@/stores';
+import type { FormInstance, FormRules } from "element-plus";
+import type { LoginDTO } from "@/api/auth/types";
+import { reactive, ref } from "vue";
+import { useRouter } from "vue-router";
+import { login } from "@/api";
+import { useUserStore } from "@/stores";
 // import { useLoginFormStore } from '@/stores/modules/loginForm';
-import { useSessionStore } from '@/stores/modules/session';
+import { useSessionStore } from "@/stores/modules/session";
+
+import { useSystemStore } from "@/stores/modules/system";
 
 const userStore = useUserStore();
 const sessionStore = useSessionStore();
@@ -16,17 +18,17 @@ const sessionStore = useSessionStore();
 const formRef = ref<FormInstance>();
 
 const formModel = reactive<LoginDTO>({
-  username: '',
-  password: '',
+  username: "",
+  password: "",
   clientId: import.meta.env.VITE_CLIENT_ID,
-  grantType: 'password',
-  tenantId: '000000',
-  uuid: 'a5705def96be468f80e4b8bde3127c31',
+  grantType: "password",
+  tenantId: "000000",
+  uuid: "a5705def96be468f80e4b8bde3127c31",
 });
 
 const rules = reactive<FormRules<LoginDTO>>({
-  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-  password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
+  username: [{ required: true, message: "请输入用户名", trigger: "blur" }],
+  password: [{ required: true, message: "请输入密码", trigger: "blur" }],
 });
 
 const router = useRouter();
@@ -34,17 +36,19 @@ async function handleSubmit() {
   try {
     await formRef.value?.validate();
     const res = await login(formModel);
-    console.log(res.data.access_token, 'res');
+    console.log(res.data.access_token, "res");
     res.data.access_token && userStore.setToken(res.data.access_token);
     // res.data.userInfo && userStore.setUserInfo(res.data.userInfo);
-    ElMessage.success('登录成功');
+    ElMessage.success("登录成功");
     userStore.closeLoginDialog();
+
+    const systemStore = useSystemStore();
+    await systemStore.fetchAppTitle();
     // 立刻获取回话列表
     await sessionStore.requestSessionList(1, true);
-    router.replace('/');
-  }
-  catch (error) {
-    console.error('请求错误:', error);
+    router.replace("/");
+  } catch (error) {
+    console.error("请求错误:", error);
   }
 }
 </script>
@@ -82,9 +86,7 @@ async function handleSubmit() {
         </el-input>
       </el-form-item>
       <el-form-item>
-        <el-button type="primary" style="width: 100%" native-type="submit">
-          登录
-        </el-button>
+        <el-button type="primary" style="width: 100%" native-type="submit"> 登录 </el-button>
       </el-form-item>
     </el-form>
 

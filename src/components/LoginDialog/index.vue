@@ -7,7 +7,8 @@ import { useLoginFormStore } from '@/stores/modules/loginForm';
 import AccountPassword from './components/FormLogin/AccountPassword.vue';
 import RegistrationForm from './components/FormLogin/RegistrationForm.vue';
 import QrCodeLogin from './components/QrCodeLogin/index.vue';
-
+import {useSystemStore} from '@/stores/modules/system';
+const systemStore = useSystemStore();
 const userStore = useUserStore();
 const loginFromStore = useLoginFormStore();
 
@@ -61,7 +62,7 @@ function onAfterLeave() {
           <div class="left-section">
             <div class="logo-wrap">
               <img :src="logoPng" class="logo-img">
-              <span class="logo-text">Virtual-Human-Admin</span>
+              <span class="logo-text">{{ systemStore.appTitle }}</span>
             </div>
             <div class="ad-banner">
               <SvgIcon name="p-bangong" class-name="animate-up-down" />
