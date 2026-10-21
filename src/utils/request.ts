@@ -64,8 +64,14 @@ function jwtPlugin(): HookFetchPlugin<BaseResponse> {
   };
 }
 
-request.use(jwtPlugin());
-fileRequest.use(jwtPlugin());
+// request.use(jwtPlugin());
+// fileRequest.use(jwtPlugin());
+
+// ✅ 导出工厂函数，由 app 挂载后再调用
+export function installJwtPlugin() {
+  request.use(jwtPlugin());
+  fileRequest.use(jwtPlugin());
+}
 
 export const post = request.post;
 

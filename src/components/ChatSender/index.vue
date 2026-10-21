@@ -1,14 +1,14 @@
 <!-- 公共聊天输入框组件 -->
 <script setup lang="ts">
 import type { FilesCardProps } from "vue-element-plus-x/types/FilesCard";
-import { nextTick, ref, watch } from "vue";
+import { nextTick, ref, watch, onMounted } from "vue";
 import { Sender } from "vue-element-plus-x";
-import { getKnowledgeList } from "@/api/chat";
+// import { getKnowledgeList } from "@/api/chat";
 import FilesSelect from "@/components/FilesSelect/index.vue";
-import ModelSelect from "@/components/ModelSelect/index.vue";
+// import ModelSelect from "@/components/ModelSelect/index.vue";
 import { useChatStore } from "@/stores/modules/chat";
 import { useFilesStore } from "@/stores/modules/files";
-import AgentSelect from '@/components/AgentSelect/index.vue';
+import AgentSelect from "@/components/AgentSelect/index.vue";
 
 const props = defineProps<{
   modelValue?: string;
@@ -43,20 +43,20 @@ const selectedKnowledgeId = ref<string>("");
 const selectedKnowledgeName = ref<string>("知识库");
 
 // 加载知识库列表
-async function loadKnowledgeList() {
-  try {
-    const response = await getKnowledgeList();
-    if (response?.rows && Array.isArray(response.rows)) {
-      knowledgeList.value = response.rows.map((item: any) => ({
-        id: item.id,
-        name: item.name,
-        icon: "Document",
-      }));
-    }
-  } catch (error) {
-    console.error("Failed to load knowledge list:", error);
-  }
-}
+// async function loadKnowledgeList() {
+//   try {
+//     const response = await getKnowledgeList();
+//     if (response?.rows && Array.isArray(response.rows)) {
+//       knowledgeList.value = response.rows.map((item: any) => ({
+//         id: item.id,
+//         name: item.name,
+//         icon: "Document",
+//       }));
+//     }
+//   } catch (error) {
+//     console.error("Failed to load knowledge list:", error);
+//   }
+// }
 
 // 插入知识库标签
 // function insertKnowledgeTag(knowledgeId: string) {
@@ -146,7 +146,7 @@ watch(
 
 // 组件挂载时加载知识库列表
 onMounted(() => {
-  loadKnowledgeList();
+  // loadKnowledgeList();
   // 从 store 中同步知识库选择状态
   if (chatStore.knowledgeId) {
     const knowledge = knowledgeList.value.find((k) => k.id === chatStore.knowledgeId);
@@ -217,12 +217,12 @@ defineExpose({
       <div class="sender-prefix-container">
         <!-- 左侧按钮组 -->
         <div class="left-buttons">
-         <AgentSelect />
+          <AgentSelect />
         </div>
-          <!-- <ModelSelect /> -->
+        <!-- <ModelSelect /> -->
 
-          <!-- 知识库选择下拉菜单 -->
-          <!-- <el-popover
+        <!-- 知识库选择下拉菜单 -->
+        <!-- <el-popover
             ref="knowledgePopoverRef"
             placement="top-start"
             :width="280"
@@ -266,8 +266,8 @@ defineExpose({
             </template>
           </el-popover> -->
 
-          <!-- 智能推理按钮 -->
-          <!-- <div
+        <!-- 智能推理按钮 -->
+        <!-- <div
             class="action-btn"
             :class="{ active: isReasoningEnabled }"
             @click="isReasoningEnabled = !isReasoningEnabled"

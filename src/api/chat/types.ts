@@ -14,6 +14,49 @@ export interface WorkFlowRunner {
 }
 
 /**
+ * 工作流 start 节点输入参数定义（来自 GET /workflow/{uuid} 返回的 start 节点
+ * inputConfig.user_inputs）。type: 1=文本 2=数字 3=? 4=文件 5=布尔。
+ */
+export interface WfNodeInputDef {
+  uuid?: string;
+  name: string;
+  title?: string;
+  type: number;
+  required?: boolean;
+  limit?: number;
+}
+
+/**
+ * 工作流运行时实际发送的输入项。content.type 与 WfNodeInputDef.type 对应。
+ */
+export interface WfNodeInput {
+  uuid?: string;
+  name: string;
+  content: {
+    title?: string;
+    value: any;
+    type: number;
+  };
+  required?: boolean;
+}
+
+
+/**
+ * 工作流运行时实际发送的输入项。content.type 与 WfNodeInputDef.type 对应。
+ */
+export interface WfNodeInput {
+  uuid?: string;
+  name: string;
+  content: {
+    title?: string;
+    value: any;
+    type: number;
+  };
+  required?: boolean;
+}
+
+
+/**
  * 人机交互信息体
  */
 export interface ReSumeRunner {
@@ -106,6 +149,7 @@ export interface SendDTO {
   enableInternet?: boolean;
   isUploadFile?: boolean;
   ossIds?: any[];
+  agentId?: number
 }
 
 /**

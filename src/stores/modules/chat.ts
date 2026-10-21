@@ -1,7 +1,14 @@
-import type { ChatMessageVo } from '@/api/chat/types';
+import type { ChatMessageVo, WfNodeInput, WfNodeInputDef } from '@/api/chat/types';
 import { defineStore } from 'pinia';
 import { getChatList } from '@/api';
 import { useUserStore } from './user';
+
+export interface WorkflowBinding {
+  uuid: string;
+  title: string;
+  startInputs: WfNodeInputDef[];
+  inputs: WfNodeInput[];
+}
 
 export const useChatStore = defineStore('chat', () => {
   const userStore = useUserStore();
@@ -28,6 +35,9 @@ export const useChatStore = defineStore('chat', () => {
 
   // 会议ID对应-聊天记录 map对象
   const chatMap = ref<Record<string, ChatMessageVo[]>>({});
+
+  // 应用市场选工作流后置入此值并回主页，提交时由 chatWithId 据此走 enableWorkFlow。
+  const currentWorkflow = ref<WorkflowBinding | null>(null);
 
   const setChatMap = (id: string, data: ChatMessageVo[]) => {
     chatMap.value[id] = data?.map((item: ChatMessageVo) => {
@@ -102,6 +112,10 @@ export const useChatStore = defineStore('chat', () => {
     return afterThink;
   }
 
+  const clearCurrentWorkflow = () => {
+    currentWorkflow.value = null;
+  };
+
   return {
     chatMap,
     requestChatList,
@@ -109,5 +123,7 @@ export const useChatStore = defineStore('chat', () => {
     setDeepThinking,
     knowledgeId,
     setKnowledgeId,
+    currentWorkflow,
+    clearCurrentWorkflow
   };
 });
